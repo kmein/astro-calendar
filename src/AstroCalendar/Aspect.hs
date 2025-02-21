@@ -4,13 +4,8 @@ module AstroCalendar.Aspect (Aspect, findAspects) where
 
 import AstroCalendar.Angle
 import AstroCalendar.Types
-import Control.Applicative
-import Control.Arrow
-import Data.Function (on)
-import Data.List
 import Data.Map qualified as Map
 import Data.Maybe
-import Data.Time.Clock
 import SwissEphemeris qualified as SwE
 
 distanceDegrees :: AspectType -> Angle

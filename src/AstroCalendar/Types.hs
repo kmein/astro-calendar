@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module AstroCalendar.Types
@@ -18,13 +19,18 @@ module AstroCalendar.Types
     SignEvent (..),
     RetrogradeEvent (..),
     IsEvent (..),
+    Settings (..),
+    Format (..),
   )
 where
 
+import Data.Aeson
 import Data.Function (on)
 import Data.List
 import Data.Map (Map)
+import Data.Text qualified as T (pack)
 import Data.Text.Lazy (Text, pack)
+import Data.Time.Calendar
 import Data.Time.Clock
 import SwissEphemeris (EclipticPosition, LongitudeComponents (..), Planet (..), ZodiacSignName (..))
 
@@ -140,6 +146,18 @@ instance IsEvent SignEvent where
   summary e = pack [symbol (planet e), ' ', maybe '?' symbol (sign e)]
   description _ = Nothing
 
+symbolToJson :: (Symbol a) => a -> Value
+symbolToJson p = String (T.pack [symbol p])
+
+instance ToJSON SignEvent where
+  toJSON event =
+    object
+      [ "planet" .= symbolToJson (planet event),
+        "startTime" .= toJSON (startTime event),
+        "endTime" .= toJSON (endTime event),
+        "sign" .= fmap symbolToJson (sign event)
+      ]
+
 data AspectEvent = AspectEvent
   { aspect :: Aspect,
     aspectExactTime :: UTCTime,
@@ -153,11 +171,31 @@ instance IsEvent AspectEvent where
   summary (aspect -> a) = pack [symbol (planet1 a), ' ', symbol (aspectType a), ' ', symbol (planet2 a)]
   description e = Just $ pack ("Exact at " <> show (aspectExactTime e))
 
+instance ToJSON AspectEvent where
+  toJSON event =
+    let a = aspect event
+     in object
+          [ "startTime" .= toJSON (startTime event),
+            "endTime" .= toJSON (endTime event),
+            "exactTime" .= toJSON (aspectExactTime event),
+            "planet1" .= symbolToJson (planet1 a),
+            "planet2" .= symbolToJson (planet2 a),
+            "type" .= symbolToJson (aspectType a)
+          ]
+
 data RetrogradeEvent = RetrogradeEvent
   { retrogradePlanet :: Planet,
     retrogradeStartTime :: UTCTime,
     retrogradeEndTime :: UTCTime
   }
+
+instance ToJSON RetrogradeEvent where
+  toJSON event =
+    object
+      [ "startTime" .= toJSON (startTime event),
+        "endTime" .= toJSON (endTime event),
+        "planet" .= symbolToJson (retrogradePlanet event)
+      ]
 
 instance IsEvent RetrogradeEvent where
   startTime = retrogradeStartTime
@@ -172,3 +210,14 @@ showLongitudeComponents longitude
     minutes <- longitudeMinutes longitude =
       [symbol sign] ++ " " ++ show degrees ++ "° " ++ show minutes ++ "ʹ"
   | otherwise = "?"
+
+data Format = ICS | Text | JSON
+
+data Settings = Settings
+  { withRetrograde :: Bool,
+    withAspects :: Bool,
+    withSigns :: Bool,
+    settingsYear :: Year,
+    settingsFormat :: Format,
+    settingsAccuracy :: Int -- how many minutes between data points
+  }

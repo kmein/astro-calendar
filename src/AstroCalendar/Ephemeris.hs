@@ -1,25 +1,26 @@
 module AstroCalendar.Ephemeris (fullEphemeris, parallelEphemeris) where
 
 import AstroCalendar.Types
+import Control.Concurrent.Async
 import Data.Map qualified as Map
 import Data.Maybe
-import Data.Time.Calendar (Year, fromGregorian)
-import Data.Time.Clock (NominalDiffTime, UTCTime (..), addUTCTime, secondsToNominalDiffTime)
+import Data.Time.Calendar (fromGregorian)
+import Data.Time.Clock (UTCTime (..), addUTCTime, secondsToNominalDiffTime)
 import SwissEphemeris qualified as SwE
 
-step :: NominalDiffTime
-step = secondsToNominalDiffTime (60 * 60) -- hourly
-
-yearTimes :: Year -> [UTCTime]
-yearTimes year =
-  let beginning = UTCTime (fromGregorian year 1 1) 0
+yearTimes :: Settings -> [UTCTime]
+yearTimes settings =
+  let year = settingsYear settings
+      step = secondsToNominalDiffTime $ 60 * fromIntegral (settingsAccuracy settings)
+      beginning = UTCTime (fromGregorian year 1 1) 0
       end = UTCTime (fromGregorian year 12 31) 86400
    in takeWhile (<= end) (iterate (addUTCTime step) beginning)
 
-fullEphemeris :: Year -> IO (Map.Map SwE.Planet Ephemeris)
-fullEphemeris year = do
-  julianDays <- catMaybes <$> traverse SwE.toJulianDay (yearTimes year)
-  Map.fromList <$> traverse (\planet -> (planet,) <$> planetaryEphemeris planet julianDays) allPlanets
+fullEphemeris :: Settings -> IO (Map.Map SwE.Planet Ephemeris)
+fullEphemeris settings = do
+  julianDays <- catMaybes <$> traverse SwE.toJulianDay (yearTimes settings)
+  timePointEphemeris <- mapConcurrently (\planet -> (planet,) <$> planetaryEphemeris planet julianDays) allPlanets
+  pure $ Map.fromList timePointEphemeris
 
 planetaryEphemeris :: SwE.Planet -> [SwE.JulianDayUT1] -> IO Ephemeris
 planetaryEphemeris planet times =

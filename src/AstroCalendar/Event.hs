@@ -1,15 +1,17 @@
-module AstroCalendar.Event (signEvent, aspectEvents, retrogradeEvents) where
+module AstroCalendar.Event (astrologicalEvents, AstrologicalEvents) where
 
 import AstroCalendar.Angle (Angle)
 import AstroCalendar.Aspect
+import AstroCalendar.Ephemeris (parallelEphemeris)
 import AstroCalendar.Types
+import Control.Arrow (second)
 import Data.Function (on)
 import Data.List (minimumBy)
 import Data.Map qualified as Map
 import Data.Maybe
-import Data.Text.Lazy qualified as TL
-import Data.Time.Clock
 import SwissEphemeris qualified as SwE
+
+type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent])
 
 signEvent :: SwE.Planet -> Ephemeris -> [SignEvent]
 signEvent planet =
@@ -66,3 +68,14 @@ retrogradeEvents planet =
                   }
       | otherwise = Nothing
     direction = signum . SwE.lngSpeed
+
+astrologicalEvents :: Settings -> Map.Map SwE.Planet Ephemeris -> AstrologicalEvents
+astrologicalEvents settings planetEphemeris =
+  ( if withRetrograde settings then Just retrogradePeriods else Nothing,
+    if withSigns settings then Just signPeriods else Nothing,
+    if withAspects settings then Just aspectPeriods else Nothing
+  )
+  where
+    retrogradePeriods = concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris
+    signPeriods = concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
+    aspectPeriods = aspectEvents $ map (second findAspects) $ parallelEphemeris planetEphemeris
