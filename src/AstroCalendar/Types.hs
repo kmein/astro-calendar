@@ -219,5 +219,6 @@ data Settings = Settings
     withSigns :: Bool,
     settingsYear :: Year,
     settingsFormat :: Format,
+    transitsTo :: Maybe UTCTime,
     settingsAccuracy :: Int -- how many minutes between data points
   }

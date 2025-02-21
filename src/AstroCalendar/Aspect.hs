@@ -29,11 +29,14 @@ isAllowed aspect distance =
       aspectDegrees = distanceDegrees (aspectType aspect)
    in distance < aspectDegrees + allowableOrb && distance > aspectDegrees - allowableOrb
 
-findAspects :: Chart -> Map.Map Aspect Angle
-findAspects chart = Map.fromList $ mapMaybe getOrb allAspects
+findAspects :: Maybe Chart -> Chart -> Map.Map Aspect Angle
+findAspects natal chart = Map.fromList $ mapMaybe getOrb $
+  case natal of
+    Just _ -> [Aspect p1 p2 t | p1 <- allPlanets, p2 <- allPlanets, t <- allAspectTypes]
+    Nothing -> allAspects
   where
     getOrb aspect@(Aspect p1 p2 aspectType) =
-      let l1 = Angle $ SwE.lng $ chart Map.! p1
+      let l1 = Angle $ SwE.lng $ fromMaybe chart natal Map.! p1
           l2 = Angle $ SwE.lng $ chart Map.! p2
           diff = abs $ difference l1 l2
           deviation = diff - distanceDegrees aspectType

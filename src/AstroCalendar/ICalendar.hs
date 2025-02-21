@@ -13,11 +13,12 @@ import Data.UUID.V4 qualified as UUID
 import Text.ICalendar
 
 astrologicalCalendar :: AstrologicalEvents -> IO VCalendar
-astrologicalCalendar (retrogradePeriods, signPeriods, aspectPeriods) = do
+astrologicalCalendar (retrogradePeriods, signPeriods, aspectPeriods, transitPeriods) = do
   signVEvents <- traverse makeVEvent (fromMaybe [] signPeriods)
   retrogradeVEvents <- traverse makeVEvent (fromMaybe [] retrogradePeriods)
   aspectVEvents <- traverse makeVEvent (fromMaybe [] aspectPeriods)
-  let events = signVEvents ++ retrogradeVEvents ++ aspectVEvents
+  transitVEvents <- traverse makeVEvent (fromMaybe [] transitPeriods)
+  let events = signVEvents ++ retrogradeVEvents ++ aspectVEvents ++ transitVEvents
   return $
     def
       { vcEvents = Map.fromList (map (\e -> ((uidValue (veUID e), Nothing), e)) events)

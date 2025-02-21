@@ -1,8 +1,10 @@
+{-# LANGUAGE LambdaCase #-}
+
 module AstroCalendar.Event (astrologicalEvents, AstrologicalEvents) where
 
 import AstroCalendar.Angle (Angle)
 import AstroCalendar.Aspect
-import AstroCalendar.Ephemeris (parallelEphemeris)
+import AstroCalendar.Ephemeris (natalChart, parallelEphemeris)
 import AstroCalendar.Types
 import Control.Arrow (second)
 import Data.Function (on)
@@ -11,7 +13,7 @@ import Data.Map qualified as Map
 import Data.Maybe
 import SwissEphemeris qualified as SwE
 
-type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent])
+type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent], Maybe [AspectEvent])
 
 signEvent :: SwE.Planet -> Ephemeris -> [SignEvent]
 signEvent planet =
@@ -69,13 +71,20 @@ retrogradeEvents planet =
       | otherwise = Nothing
     direction = signum . SwE.lngSpeed
 
-astrologicalEvents :: Settings -> Map.Map SwE.Planet Ephemeris -> AstrologicalEvents
-astrologicalEvents settings planetEphemeris =
-  ( if withRetrograde settings then Just retrogradePeriods else Nothing,
-    if withSigns settings then Just signPeriods else Nothing,
-    if withAspects settings then Just aspectPeriods else Nothing
-  )
+astrologicalEvents :: Settings -> Map.Map SwE.Planet Ephemeris -> IO AstrologicalEvents
+astrologicalEvents settings planetEphemeris = do
+  (if withRetrograde settings then Just retrogradePeriods else Nothing,if withSigns settings then Just signPeriods else Nothing,if withAspects settings then Just aspectPeriods else Nothing,)
+    <$> transitPeriods (transitsTo settings)
   where
     retrogradePeriods = concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris
     signPeriods = concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
-    aspectPeriods = aspectEvents $ map (second findAspects) $ parallelEphemeris planetEphemeris
+    aspectPeriods = aspectEvents $ map (second (findAspects Nothing)) $ parallelEphemeris planetEphemeris
+    transitPeriods = \case
+      Just birthTime -> do
+        natal <- natalChart birthTime
+        pure $
+          Just $
+            aspectEvents $
+              map (second (findAspects (Just natal))) $
+                parallelEphemeris planetEphemeris
+      Nothing -> pure Nothing

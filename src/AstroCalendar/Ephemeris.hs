@@ -1,4 +1,4 @@
-module AstroCalendar.Ephemeris (fullEphemeris, parallelEphemeris) where
+module AstroCalendar.Ephemeris (fullEphemeris, parallelEphemeris, natalChart) where
 
 import AstroCalendar.Types
 import Control.Concurrent.Async
@@ -15,6 +15,23 @@ yearTimes settings =
       beginning = UTCTime (fromGregorian year 1 1) 0
       end = UTCTime (fromGregorian year 12 31) 86400
    in takeWhile (<= end) (iterate (addUTCTime step) beginning)
+
+natalChart :: UTCTime -> IO Chart
+natalChart utcTime = do
+  maybeTime <- SwE.toJulianDay utcTime
+  case maybeTime of
+    Just time -> do
+      Map.fromList
+        . catMaybes
+        <$> traverse
+          ( \planet -> do
+              position <- SwE.calculateEclipticPosition time planet
+              pure $ fmap (planet,) (eitherToMaybe position)
+          )
+          allPlanets
+    _ -> error $ "Could not convert to julian day: " ++ show utcTime
+  where
+    eitherToMaybe = either (const Nothing) Just
 
 fullEphemeris :: Settings -> IO (Map.Map SwE.Planet Ephemeris)
 fullEphemeris settings = do
