@@ -21,6 +21,7 @@ module AstroCalendar.Types
     IsEvent (..),
     Settings (..),
     Format (..),
+    Accuracy (..),
   )
 where
 
@@ -30,7 +31,6 @@ import Data.List
 import Data.Map (Map)
 import Data.Text qualified as T (pack)
 import Data.Text.Lazy (Text, pack)
-import Data.Time.Calendar
 import Data.Time.Clock
 import SwissEphemeris (EclipticPosition, LongitudeComponents (..), Planet (..), ZodiacSignName (..))
 
@@ -213,12 +213,15 @@ showLongitudeComponents longitude
 
 data Format = ICS | Text | JSON
 
+data Accuracy = Monthly | Daily | Hourly | Minutely
+
 data Settings = Settings
   { withRetrograde :: Bool,
     withAspects :: Bool,
     withSigns :: Bool,
-    settingsYear :: Year,
     settingsFormat :: Format,
+    settingsBegin :: Maybe UTCTime,
+    settingsEnd :: Maybe UTCTime,
     transitsTo :: Maybe UTCTime,
-    settingsAccuracy :: Int -- how many minutes between data points
+    settingsAccuracy :: Accuracy
   }

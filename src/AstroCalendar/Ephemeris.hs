@@ -4,16 +4,22 @@ import AstroCalendar.Types
 import Control.Concurrent.Async
 import Data.Map qualified as Map
 import Data.Maybe
-import Data.Time.Calendar (fromGregorian)
-import Data.Time.Clock (UTCTime (..), addUTCTime, secondsToNominalDiffTime)
+import Data.Time.Calendar (fromGregorian, Year)
+import Data.Time.Clock (UTCTime (..), addUTCTime, nominalDay, secondsToNominalDiffTime)
 import SwissEphemeris qualified as SwE
+
+currentYear :: Year
+currentYear = 2025
 
 yearTimes :: Settings -> [UTCTime]
 yearTimes settings =
-  let year = settingsYear settings
-      step = secondsToNominalDiffTime $ 60 * fromIntegral (settingsAccuracy settings)
-      beginning = UTCTime (fromGregorian year 1 1) 0
-      end = UTCTime (fromGregorian year 12 31) 86400
+  let step = case settingsAccuracy settings of
+        Minutely -> secondsToNominalDiffTime 60
+        Hourly -> secondsToNominalDiffTime $ 60 * 60
+        Daily -> nominalDay
+        Monthly -> 30 * nominalDay
+      beginning = fromMaybe (UTCTime (fromGregorian currentYear 1 1) 0) (settingsBegin settings)
+      end = fromMaybe (UTCTime (fromGregorian currentYear 12 31) 86400) (settingsEnd settings)
    in takeWhile (<= end) (iterate (addUTCTime step) beginning)
 
 natalChart :: UTCTime -> IO Chart

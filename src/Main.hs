@@ -31,18 +31,28 @@ sample =
           <> short 's'
           <> help "Include sign transitions"
       )
-    <*> option
-      auto
-      ( long "year"
-          <> help "For which year to generate the calendar"
-          <> showDefault
-          <> value 2025
-          <> metavar "YEAR"
-      )
     <*> ( flag' ICS (long "ICS" <> help "Write iCalendar")
             <|> flag' Text (long "text" <> help "Write plain text")
             <|> flag' JSON (long "json" <> help "Write JSON")
         )
+    <*> optional
+      ( option
+          parseUTCTime
+          ( long "begin"
+              <> short 'b'
+              <> help "Start date"
+              <> metavar "YYYY-MM-DD HH:MM"
+          )
+      )
+    <*> optional
+      ( option
+          parseUTCTime
+          ( long "end"
+              <> short 'e'
+              <> help "End date"
+              <> metavar "YYYY-MM-DD HH:MM"
+          )
+      )
     <*> optional
       ( option
           parseUTCTime
@@ -52,14 +62,11 @@ sample =
               <> metavar "YYYY-MM-DD HH:MM"
           )
       )
-    <*> option
-      auto
-      ( long "accuracy"
-          <> help "How many minutes to skip between data points"
-          <> showDefault
-          <> value 60
-          <> metavar "MINUTES"
-      )
+    <*> ( flag' Daily (long "daily" <> help "Check for every day")
+            <|> flag' Hourly (long "hourly" <> help "Check for every hour")
+            <|> flag' Monthly (long "monthly" <> help "Check for every month")
+            <|> flag' Minutely (long "minutely" <> help "Check for every minute")
+        )
 
 parseUTCTime :: ReadM UTCTime
 parseUTCTime = eitherReader $ \input ->
@@ -67,10 +74,14 @@ parseUTCTime = eitherReader $ \input ->
     Just time -> Right time
     Nothing -> Left "Invalid time format. Expected format: YYYY-MM-DD HH:MM"
 
-eventToString :: (IsEvent e) => e -> String
-eventToString event = unwords [strptime (startTime event), strptime (endTime event), TL.unpack (summary event)]
+eventToString :: (IsEvent e) => Settings -> e -> String
+eventToString settings event = unwords [strptime (startTime event), strptime (endTime event), TL.unpack (summary event)]
   where
-    strptime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M"
+    strptime = formatTime defaultTimeLocale $ case settingsAccuracy settings of
+      Minutely -> "%Y-%m-%d %H:%M"
+      Hourly -> "%Y-%m-%d %H"
+      Daily -> "%Y-%m-%d"
+      Monthly -> "%Y-%m"
 
 main :: IO ()
 main = do
@@ -85,10 +96,10 @@ main = do
       calendar <- astrologicalCalendar events
       BL.putStr $ printICalendar def calendar
     Text -> do
-      maybe (pure ()) (mapM_ (putStrLn . eventToString)) r
-      maybe (pure ()) (mapM_ (putStrLn . eventToString)) s
-      maybe (pure ()) (mapM_ (putStrLn . eventToString)) a
-      maybe (pure ()) (mapM_ (putStrLn . eventToString)) t
+      maybe (pure ()) (mapM_ (putStrLn . eventToString settings)) r
+      maybe (pure ()) (mapM_ (putStrLn . eventToString settings)) s
+      maybe (pure ()) (mapM_ (putStrLn . eventToString settings)) a
+      maybe (pure ()) (mapM_ (putStrLn . eventToString settings)) t
     JSON -> do
       BL.putStr $
         JSON.encode $
