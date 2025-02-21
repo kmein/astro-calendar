@@ -7,10 +7,12 @@ module AstroCalendar.Types
     Chart,
     Ephemeris,
     Aspect (..),
+    Transit (..),
     TimeSeries,
     allAspects,
     allAspectTypes,
     allPlanets,
+    allTransits,
     chunkTimeSeries,
     timeSeriesTimes,
     getTime,
@@ -18,6 +20,7 @@ module AstroCalendar.Types
     AspectEvent (..),
     SignEvent (..),
     RetrogradeEvent (..),
+    TransitEvent (..),
     IsEvent (..),
     Settings (..),
     Format (..),
@@ -77,12 +80,19 @@ instance Symbol Planet where
 retrograde :: Char
 retrograde = '℞'
 
+data Transit = Transit
+  { natalPlanet :: Planet,
+    transitingPlanet :: Planet,
+    transitType :: AspectType
+  }
+  deriving (Eq, Ord, Show)
+
 data Aspect = Aspect
   { planet1 :: Planet,
     planet2 :: Planet,
     aspectType :: AspectType
   }
-  deriving (Ord)
+  deriving (Ord, Show)
 
 instance Eq Aspect where
   a1 == a2 =
@@ -97,6 +107,15 @@ allAspects =
     | p1 <- allPlanets,
       p2 <- allPlanets,
       p1 < p2,
+      t <- allAspectTypes
+  ]
+
+
+allTransits :: [Transit]
+allTransits =
+  [ Transit pn pt t
+    | pn <- allPlanets,
+      pt <- delete Moon allPlanets,
       t <- allAspectTypes
   ]
 
@@ -169,7 +188,7 @@ instance IsEvent AspectEvent where
   startTime = aspectStartTime
   endTime = aspectEndTime
   summary (aspect -> a) = pack [symbol (planet1 a), ' ', symbol (aspectType a), ' ', symbol (planet2 a)]
-  description e = Just $ pack ("Exact at " <> show (aspectExactTime e))
+  description e = Just $ pack ("closest at " <> show (aspectExactTime e))
 
 instance ToJSON AspectEvent where
   toJSON event =
@@ -181,6 +200,31 @@ instance ToJSON AspectEvent where
             "planet1" .= symbolToJson (planet1 a),
             "planet2" .= symbolToJson (planet2 a),
             "type" .= symbolToJson (aspectType a)
+          ]
+
+data TransitEvent = TransitEvent
+  { transit :: Transit,
+    transitExactTime :: UTCTime,
+    transitStartTime :: UTCTime,
+    transitEndTime :: UTCTime
+  }
+
+instance IsEvent TransitEvent where
+  startTime = transitStartTime
+  endTime = transitEndTime
+  summary (transit -> t) = pack [symbol (transitingPlanet t), ' ', symbol (transitType t)] <> " natal " <> pack [symbol (natalPlanet t)]
+  description e = Just $ pack ("closest at " <> show (transitExactTime e))
+
+instance ToJSON TransitEvent where
+  toJSON event =
+    let t = transit event
+     in object
+          [ "startTime" .= toJSON (startTime event),
+            "endTime" .= toJSON (endTime event),
+            "exactTime" .= toJSON (transitExactTime event),
+            "planet1" .= symbolToJson (natalPlanet t),
+            "planet2" .= symbolToJson (transitingPlanet t),
+            "type" .= symbolToJson (transitType t)
           ]
 
 data RetrogradeEvent = RetrogradeEvent

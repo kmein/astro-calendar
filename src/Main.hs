@@ -75,7 +75,7 @@ parseUTCTime = eitherReader $ \input ->
     Nothing -> Left "Invalid time format. Expected format: YYYY-MM-DD HH:MM"
 
 eventToString :: (IsEvent e) => Settings -> e -> String
-eventToString settings event = unwords [strptime (startTime event), strptime (endTime event), TL.unpack (summary event)]
+eventToString settings event = unwords [strptime (startTime event), strptime (endTime event), TL.unpack (summary event), maybe "" TL.unpack (description event)]
   where
     strptime = formatTime defaultTimeLocale $ case settingsAccuracy settings of
       Minutely -> "%Y-%m-%d %H:%M"

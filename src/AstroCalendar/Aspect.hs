@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module AstroCalendar.Aspect (Aspect, findAspects) where
+module AstroCalendar.Aspect (findAspects, findTransits) where
 
 import AstroCalendar.Angle
 import AstroCalendar.Types
@@ -17,29 +17,50 @@ distanceDegrees =
     Trine -> 120
     Opposition -> 180
 
-allowedOrb :: Aspect -> Angle
-allowedOrb Aspect {planet1, planet2, aspectType} =
-  if planet1 == SwE.Sun || planet1 == SwE.Moon || planet2 == SwE.Sun || planet2 == SwE.Moon
-    then 10
-    else 8
+allowedOrb :: Either Aspect Transit -> Angle
+allowedOrb aspectOrTransit =
+  let p1 = either planet1 natalPlanet aspectOrTransit
+      p2 = either planet2 transitingPlanet aspectOrTransit
+   in if p1 == SwE.Sun || p1 == SwE.Moon || p2 == SwE.Sun || p2 == SwE.Moon
+        then 10
+        else 8
 
-isAllowed :: Aspect -> Angle -> Bool
-isAllowed aspect distance =
-  let allowableOrb = allowedOrb aspect
-      aspectDegrees = distanceDegrees (aspectType aspect)
+isAllowed :: Either Aspect Transit -> Angle -> Bool
+isAllowed aspectOrTransit distance =
+  let allowableOrb = allowedOrb aspectOrTransit
+      aspectDegrees = distanceDegrees (either aspectType transitType aspectOrTransit)
    in distance < aspectDegrees + allowableOrb && distance > aspectDegrees - allowableOrb
 
-findAspects :: Maybe Chart -> Chart -> Map.Map Aspect Angle
-findAspects natal chart = Map.fromList $ mapMaybe getOrb $
-  case natal of
-    Just _ -> [Aspect p1 p2 t | p1 <- allPlanets, p2 <- allPlanets, t <- allAspectTypes]
-    Nothing -> allAspects
+findAspects :: Chart -> Map.Map Aspect Angle
+findAspects chart =
+  Map.fromList $
+    mapMaybe getOrb allAspects
   where
     getOrb aspect@(Aspect p1 p2 aspectType) =
-      let l1 = Angle $ SwE.lng $ fromMaybe chart natal Map.! p1
+      let l1 = Angle $ SwE.lng $ chart Map.! p1
           l2 = Angle $ SwE.lng $ chart Map.! p2
           diff = abs $ difference l1 l2
           deviation = diff - distanceDegrees aspectType
-       in if isAllowed aspect diff
+       in if isAllowed (Left aspect) diff
             then Just (aspect, abs deviation)
+            else Nothing
+
+findTransits :: Chart -> Chart -> Map.Map Transit Angle
+findTransits natal chart = Map.fromList $ mapMaybe getOrb allTransits
+  where
+    getOrb aspect@(Transit pn pt aspectType) =
+      let ln = Angle $ SwE.lng $ natal Map.! pn
+          lt = Angle $ SwE.lng $ chart Map.! pt
+          diff = abs $ difference ln lt
+          deviation = diff - distanceDegrees aspectType
+       in if isAllowed (Right aspect) diff
+            then
+              Just
+                ( Transit
+                    { natalPlanet = pn,
+                      transitingPlanet = pt,
+                      transitType = aspectType
+                    },
+                  abs deviation
+                )
             else Nothing

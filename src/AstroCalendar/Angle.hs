@@ -5,7 +5,7 @@ module AstroCalendar.Angle (Angle (..), difference) where
 import Data.Fixed (mod')
 
 newtype Angle = Angle {degrees :: Double}
-  deriving newtype (Eq, Ord, Num, Real)
+  deriving newtype (Eq, Ord, Num, Real, Show)
 
 normalize :: Angle -> Angle
 normalize angle =

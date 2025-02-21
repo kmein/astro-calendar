@@ -13,7 +13,7 @@ import Data.Map qualified as Map
 import Data.Maybe
 import SwissEphemeris qualified as SwE
 
-type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent], Maybe [AspectEvent])
+type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent], Maybe [TransitEvent])
 
 signEvent :: SwE.Planet -> Ephemeris -> [SignEvent]
 signEvent planet =
@@ -53,6 +53,28 @@ aspectEvents aspects =
                   }
           | otherwise = Nothing
 
+transitEvents :: TimeSeries (Map.Map Transit Angle) -> [TransitEvent]
+transitEvents transits =
+  concatMap findOccurrences allTransits
+  where
+    findOccurrences :: Transit -> [TransitEvent]
+    findOccurrences transit = mapMaybe period $ chunkTimeSeries (Map.member transit) transits
+      where
+        period :: TimeSeries (Map.Map Transit Angle) -> Maybe TransitEvent
+        period transitTimes
+          | (_, tTransits) : _ <- transitTimes,
+            times <- timeSeriesTimes transitTimes,
+            length transitTimes > 1,
+            Map.member transit tTransits =
+              Just
+                TransitEvent
+                  { transit = transit,
+                    transitStartTime = minimum times,
+                    transitEndTime = maximum times,
+                    transitExactTime = getTime (minimumBy (compare `on` ((Map.! transit) . getValue)) transitTimes)
+                  }
+          | otherwise = Nothing
+
 retrogradeEvents :: SwE.Planet -> Ephemeris -> [RetrogradeEvent]
 retrogradeEvents planet =
   mapMaybe groupToRange . chunkTimeSeries direction
@@ -73,18 +95,23 @@ retrogradeEvents planet =
 
 astrologicalEvents :: Settings -> Map.Map SwE.Planet Ephemeris -> IO AstrologicalEvents
 astrologicalEvents settings planetEphemeris = do
-  (if withRetrograde settings then Just retrogradePeriods else Nothing,if withSigns settings then Just signPeriods else Nothing,if withAspects settings then Just aspectPeriods else Nothing,)
-    <$> transitPeriods (transitsTo settings)
+  ts <- transitPeriods (transitsTo settings)
+  return
+    ( if withRetrograde settings then Just retrogradePeriods else Nothing,
+      if withSigns settings then Just signPeriods else Nothing,
+      if withAspects settings then Just aspectPeriods else Nothing,
+      ts
+    )
   where
     retrogradePeriods = concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris
     signPeriods = concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
-    aspectPeriods = aspectEvents $ map (second (findAspects Nothing)) $ parallelEphemeris planetEphemeris
+    aspectPeriods = aspectEvents $ map (second findAspects) $ parallelEphemeris planetEphemeris
     transitPeriods = \case
       Just birthTime -> do
         natal <- natalChart birthTime
         pure $
           Just $
-            aspectEvents $
-              map (second (findAspects (Just natal))) $
+            transitEvents $
+              map (second (findTransits natal)) $
                 parallelEphemeris planetEphemeris
       Nothing -> pure Nothing
