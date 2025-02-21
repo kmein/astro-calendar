@@ -1,7 +1,6 @@
-module AstroCalendar.Ephemeris (ephemeris, parallelEphemeris) where
+module AstroCalendar.Ephemeris (fullEphemeris, parallelEphemeris) where
 
 import AstroCalendar.Types
-import Control.Monad
 import Data.Map qualified as Map
 import Data.Maybe
 import Data.Time.Calendar (Year, fromGregorian)
@@ -17,8 +16,8 @@ yearTimes year =
       end = UTCTime (fromGregorian year 12 31) 86400
    in takeWhile (<= end) (iterate (addUTCTime step) beginning)
 
-ephemeris :: Year -> IO (Map.Map SwE.Planet Ephemeris)
-ephemeris year = do
+fullEphemeris :: Year -> IO (Map.Map SwE.Planet Ephemeris)
+fullEphemeris year = do
   julianDays <- catMaybes <$> traverse SwE.toJulianDay (yearTimes year)
   Map.fromList <$> traverse (\planet -> (planet,) <$> planetaryEphemeris planet julianDays) allPlanets
 

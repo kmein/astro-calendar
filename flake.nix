@@ -29,11 +29,12 @@
     devShells = forAllSystems (system: let
       pkgs = pkgsForSystem system;
     in {
-      default = pkgs.mkShell {
+      default = pkgs.astro-calendar.env.overrideAttrs (old: old // {
+        buildInputs = [ pkgs.cabal-install pkgs.cabal2nix pkgs.haskellPackages.ormolu ];
         shellHook = ''
           export SE_EPHE_PATH=${swisseph.outPath}/ephe
         '';
-      };
+      });
     });
   };
 }

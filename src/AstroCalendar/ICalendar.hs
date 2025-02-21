@@ -3,7 +3,6 @@ module AstroCalendar.ICalendar where
 import AstroCalendar.Aspect (findAspects)
 import AstroCalendar.Ephemeris (parallelEphemeris)
 import AstroCalendar.Event
-import AstroCalendar.Symbol
 import AstroCalendar.Types
 import Control.Arrow (second)
 import Data.Default
@@ -16,16 +15,27 @@ import Data.UUID.V4 qualified as UUID
 import SwissEphemeris qualified as SwE
 import Text.ICalendar
 
-simpleEvent :: TL.Text -> Maybe TL.Text -> (UTCTime, UTCTime) -> IO VEvent
-simpleEvent summary description (start, end) = do
+makeVEvent :: (IsEvent e) => e -> IO VEvent
+makeVEvent e = do
   uuid <- TL.fromStrict . UUID.toText <$> UUID.nextRandom
   pure $
     VEvent
-      { veDescription = fmap (\d -> (Description {descriptionValue = d, descriptionAltRep = def, descriptionLanguage = def, descriptionOther = def})) description,
+      { veDescription =
+          fmap
+            ( \d ->
+                ( Description
+                    { descriptionValue = d,
+                      descriptionAltRep = def,
+                      descriptionLanguage = def,
+                      descriptionOther = def
+                    }
+                )
+            )
+            (description e),
         veSummary =
           Just
             ( Summary
-                { summaryValue = summary,
+                { summaryValue = summary e,
                   summaryOther = def,
                   summaryAltRep = def,
                   summaryLanguage = def
@@ -40,14 +50,14 @@ simpleEvent summary description (start, end) = do
         veDTStart =
           Just
             DTStartDateTime
-              { dtStartDateTimeValue = UTCDateTime start,
+              { dtStartDateTimeValue = UTCDateTime (startTime e),
                 dtStartOther = def
               },
         veDTEndDuration =
           Just
             ( Left
                 DTEndDateTime
-                  { dtEndDateTimeValue = UTCDateTime end,
+                  { dtEndDateTimeValue = UTCDateTime (endTime e),
                     dtEndOther = def
                   }
             ),
@@ -77,9 +87,6 @@ simpleEvent summary description (start, end) = do
         veStatus = def,
         veUrl = def
       }
-
-makeVEvent :: (IsEvent e) => e -> IO VEvent
-makeVEvent e = simpleEvent (summary e) (description e) (startTime e, endTime e)
 
 astrologicalEvents :: Map.Map SwE.Planet Ephemeris -> IO [VEvent]
 astrologicalEvents ephemerides =

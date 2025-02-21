@@ -24,7 +24,6 @@ where
 import Data.Function (on)
 import Data.List
 import Data.Map (Map)
-import Data.Maybe
 import Data.Text.Lazy (Text, pack)
 import Data.Time.Clock
 import SwissEphemeris (EclipticPosition, LongitudeComponents (..), Planet (..), ZodiacSignName (..))
