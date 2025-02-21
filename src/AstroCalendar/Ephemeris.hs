@@ -22,8 +22,8 @@ yearTimes settings =
       end = fromMaybe (UTCTime (fromGregorian currentYear 12 31) 86400) (settingsEnd settings)
    in takeWhile (<= end) (iterate (addUTCTime step) beginning)
 
-natalChart :: UTCTime -> IO Chart
-natalChart utcTime = do
+natalChart :: PlanetSelection -> UTCTime -> IO Chart
+natalChart planetSelection utcTime = do
   maybeTime <- SwE.toJulianDay utcTime
   case maybeTime of
     Just time -> do
@@ -34,7 +34,7 @@ natalChart utcTime = do
               position <- SwE.calculateEclipticPosition time planet
               pure $ fmap (planet,) (eitherToMaybe position)
           )
-          allPlanets
+          (allPlanets planetSelection)
     _ -> error $ "Could not convert to julian day: " ++ show utcTime
   where
     eitherToMaybe = either (const Nothing) Just
@@ -42,7 +42,7 @@ natalChart utcTime = do
 fullEphemeris :: Settings -> IO (Map.Map SwE.Planet Ephemeris)
 fullEphemeris settings = do
   julianDays <- catMaybes <$> traverse SwE.toJulianDay (yearTimes settings)
-  timePointEphemeris <- mapConcurrently (\planet -> (planet,) <$> planetaryEphemeris planet julianDays) allPlanets
+  timePointEphemeris <- mapConcurrently (\planet -> (planet,) <$> planetaryEphemeris planet julianDays) (allPlanets $ settingsPlanets settings)
   pure $ Map.fromList timePointEphemeris
 
 planetaryEphemeris :: SwE.Planet -> [SwE.JulianDayUT1] -> IO Ephemeris

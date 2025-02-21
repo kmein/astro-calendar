@@ -31,7 +31,7 @@ sample =
           <> short 's'
           <> help "Include sign transitions"
       )
-    <*> ( flag' ICS (long "ICS" <> help "Write iCalendar")
+    <*> ( flag' ICS (long "ical" <> help "Write iCalendar")
             <|> flag' Text (long "text" <> help "Write plain text")
             <|> flag' JSON (long "json" <> help "Write JSON")
         )
@@ -62,6 +62,9 @@ sample =
               <> metavar "YYYY-MM-DD HH:MM"
           )
       )
+    <*> ( flag' Traditional (long "traditional" <> help "Use traditional 7 planets")
+            <|> flag' Modern (long "modern" <> help "Use modern 10 planets")
+        )
     <*> ( flag' Daily (long "daily" <> help "Check for every day")
             <|> flag' Hourly (long "hourly" <> help "Check for every hour")
             <|> flag' Monthly (long "monthly" <> help "Check for every month")

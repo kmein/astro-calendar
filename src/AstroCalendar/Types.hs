@@ -25,6 +25,7 @@ module AstroCalendar.Types
     Settings (..),
     Format (..),
     Accuracy (..),
+    PlanetSelection(..),
   )
 where
 
@@ -72,7 +73,7 @@ instance Symbol Planet where
     Saturn -> '♄'
     Uranus -> '♅'
     Neptune -> '♆'
-    Pluto -> '⯓'
+    Pluto -> '♇'
     Moon -> '☽'
     Sun -> '☉'
     _ -> '\xfffd' -- replacement character
@@ -101,29 +102,30 @@ instance Eq Aspect where
              || (planet1 a1 == planet2 a2 && planet2 a1 == planet1 a2)
          )
 
-allAspects :: [Aspect]
-allAspects =
+allAspects :: PlanetSelection -> [Aspect]
+allAspects planetSelection =
   [ Aspect p1 p2 t
-    | p1 <- allPlanets,
-      p2 <- allPlanets,
+    | p1 <- allPlanets planetSelection,
+      p2 <- allPlanets planetSelection,
       p1 < p2,
       t <- allAspectTypes
   ]
 
 
-allTransits :: [Transit]
-allTransits =
+allTransits :: PlanetSelection -> [Transit]
+allTransits planetSelection =
   [ Transit pn pt t
-    | pn <- allPlanets,
-      pt <- delete Moon allPlanets,
+    | pn <- allPlanets planetSelection,
+      pt <- delete Moon (allPlanets planetSelection),
       t <- allAspectTypes
   ]
 
 allAspectTypes :: [AspectType]
 allAspectTypes = [Conjunction, Sextile, Square, Trine, Opposition]
 
-allPlanets :: [Planet]
-allPlanets = [Sun .. Pluto]
+allPlanets :: PlanetSelection -> [Planet]
+allPlanets Modern = [Sun .. Pluto]
+allPlanets Traditional = [Sun .. Saturn]
 
 type TimeSeries a = [(UTCTime, a)]
 
@@ -259,6 +261,8 @@ data Format = ICS | Text | JSON
 
 data Accuracy = Monthly | Daily | Hourly | Minutely
 
+data PlanetSelection = Traditional | Modern
+
 data Settings = Settings
   { withRetrograde :: Bool,
     withAspects :: Bool,
@@ -267,5 +271,6 @@ data Settings = Settings
     settingsBegin :: Maybe UTCTime,
     settingsEnd :: Maybe UTCTime,
     transitsTo :: Maybe UTCTime,
+    settingsPlanets :: PlanetSelection,
     settingsAccuracy :: Accuracy
   }

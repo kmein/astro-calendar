@@ -31,10 +31,9 @@ isAllowed aspectOrTransit distance =
       aspectDegrees = distanceDegrees (either aspectType transitType aspectOrTransit)
    in distance < aspectDegrees + allowableOrb && distance > aspectDegrees - allowableOrb
 
-findAspects :: Chart -> Map.Map Aspect Angle
-findAspects chart =
-  Map.fromList $
-    mapMaybe getOrb allAspects
+findAspects :: PlanetSelection -> Chart -> Map.Map Aspect Angle
+findAspects planetSelection chart =
+  Map.fromList $ mapMaybe getOrb (allAspects planetSelection)
   where
     getOrb aspect@(Aspect p1 p2 aspectType) =
       let l1 = Angle $ SwE.lng $ chart Map.! p1
@@ -45,8 +44,8 @@ findAspects chart =
             then Just (aspect, abs deviation)
             else Nothing
 
-findTransits :: Chart -> Chart -> Map.Map Transit Angle
-findTransits natal chart = Map.fromList $ mapMaybe getOrb allTransits
+findTransits :: PlanetSelection -> Chart -> Chart -> Map.Map Transit Angle
+findTransits planetSelection natal chart = Map.fromList $ mapMaybe getOrb (allTransits planetSelection)
   where
     getOrb aspect@(Transit pn pt aspectType) =
       let ln = Angle $ SwE.lng $ natal Map.! pn

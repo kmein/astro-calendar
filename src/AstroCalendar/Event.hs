@@ -32,9 +32,9 @@ signEvent planet =
     signFromPosition :: SwE.EclipticPosition -> Maybe SwE.ZodiacSignName
     signFromPosition = SwE.longitudeZodiacSign . SwE.splitDegreesZodiac . SwE.getEclipticLongitude
 
-aspectEvents :: TimeSeries (Map.Map Aspect Angle) -> [AspectEvent]
-aspectEvents aspects =
-  concatMap findOccurrences allAspects
+aspectEvents :: PlanetSelection -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent]
+aspectEvents planetSelection aspects =
+  concatMap findOccurrences (allAspects planetSelection)
   where
     findOccurrences :: Aspect -> [AspectEvent]
     findOccurrences aspect = mapMaybe period $ chunkTimeSeries (Map.member aspect) aspects
@@ -53,9 +53,9 @@ aspectEvents aspects =
                   }
           | otherwise = Nothing
 
-transitEvents :: TimeSeries (Map.Map Transit Angle) -> [TransitEvent]
-transitEvents transits =
-  concatMap findOccurrences allTransits
+transitEvents :: PlanetSelection -> TimeSeries (Map.Map Transit Angle) -> [TransitEvent]
+transitEvents planetSelection transits =
+  concatMap findOccurrences (allTransits planetSelection)
   where
     findOccurrences :: Transit -> [TransitEvent]
     findOccurrences transit = mapMaybe period $ chunkTimeSeries (Map.member transit) transits
@@ -103,15 +103,16 @@ astrologicalEvents settings planetEphemeris = do
       ts
     )
   where
+    planets = settingsPlanets settings
     retrogradePeriods = concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris
     signPeriods = concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
-    aspectPeriods = aspectEvents $ map (second findAspects) $ parallelEphemeris planetEphemeris
+    aspectPeriods = aspectEvents planets $ map (second (findAspects planets)) $ parallelEphemeris planetEphemeris
     transitPeriods = \case
       Just birthTime -> do
-        natal <- natalChart birthTime
+        natal <- natalChart planets birthTime
         pure $
           Just $
-            transitEvents $
-              map (second (findTransits natal)) $
+            transitEvents planets $
+              map (second (findTransits planets natal)) $
                 parallelEphemeris planetEphemeris
       Nothing -> pure Nothing
