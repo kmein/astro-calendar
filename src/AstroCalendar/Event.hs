@@ -93,8 +93,8 @@ retrogradeEvents planet =
       | otherwise = Nothing
     direction = signum . SwE.lngSpeed
 
-astrologicalEvents :: Settings -> Map.Map SwE.Planet Ephemeris -> IO AstrologicalEvents
-astrologicalEvents settings planetEphemeris = do
+astrologicalEvents :: PlanetSelection -> EventsSettings -> Map.Map SwE.Planet Ephemeris -> IO AstrologicalEvents
+astrologicalEvents planetSelection settings planetEphemeris = do
   ts <- transitPeriods (transitsTo settings)
   return
     ( if withRetrograde settings then Just retrogradePeriods else Nothing,
@@ -103,16 +103,15 @@ astrologicalEvents settings planetEphemeris = do
       ts
     )
   where
-    planets = settingsPlanets settings
     retrogradePeriods = concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris
     signPeriods = concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
-    aspectPeriods = aspectEvents planets $ map (second (findAspects planets)) $ parallelEphemeris planetEphemeris
+    aspectPeriods = aspectEvents planetSelection $ map (second (findAspects planetSelection)) $ parallelEphemeris planetEphemeris
     transitPeriods = \case
       Just birthTime -> do
-        natal <- natalChart planets birthTime
+        natal <- natalChart planetSelection birthTime
         pure $
           Just $
-            transitEvents planets $
-              map (second (findTransits planets natal)) $
+            transitEvents planetSelection $
+              map (second (findTransits planetSelection natal)) $
                 parallelEphemeris planetEphemeris
       Nothing -> pure Nothing

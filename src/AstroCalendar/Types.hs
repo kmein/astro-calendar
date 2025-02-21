@@ -17,15 +17,18 @@ module AstroCalendar.Types
     timeSeriesTimes,
     getTime,
     getValue,
+    Symbol (..),
     AspectEvent (..),
     SignEvent (..),
     RetrogradeEvent (..),
     TransitEvent (..),
     IsEvent (..),
     Settings (..),
+    Command (..),
     Format (..),
     Accuracy (..),
-    PlanetSelection(..),
+    EventsSettings (..),
+    PlanetSelection (..),
   )
 where
 
@@ -36,7 +39,7 @@ import Data.Map (Map)
 import Data.Text qualified as T (pack)
 import Data.Text.Lazy (Text, pack)
 import Data.Time.Clock
-import SwissEphemeris (EclipticPosition, LongitudeComponents (..), Planet (..), ZodiacSignName (..))
+import SwissEphemeris (EclipticPosition, Planet (..), ZodiacSignName (..))
 
 class Symbol a where
   symbol :: a -> Char
@@ -110,7 +113,6 @@ allAspects planetSelection =
       p1 < p2,
       t <- allAspectTypes
   ]
-
 
 allTransits :: PlanetSelection -> [Transit]
 allTransits planetSelection =
@@ -249,28 +251,28 @@ instance IsEvent RetrogradeEvent where
   summary e = pack [symbol (retrogradePlanet e), ' ', retrograde]
   description _ = Nothing
 
-showLongitudeComponents :: LongitudeComponents -> String
-showLongitudeComponents longitude
-  | Just sign <- longitudeZodiacSign longitude,
-    degrees <- longitudeDegrees longitude,
-    minutes <- longitudeMinutes longitude =
-      [symbol sign] ++ " " ++ show degrees ++ "° " ++ show minutes ++ "ʹ"
-  | otherwise = "?"
-
 data Format = ICS | Text | JSON
 
 data Accuracy = Monthly | Daily | Hourly | Minutely
 
 data PlanetSelection = Traditional | Modern
 
-data Settings = Settings
+data Command
+  = Events EventsSettings
+  | Chart {birthTime :: UTCTime}
+
+data EventsSettings = EventsSettings
   { withRetrograde :: Bool,
     withAspects :: Bool,
     withSigns :: Bool,
-    settingsFormat :: Format,
     settingsBegin :: Maybe UTCTime,
     settingsEnd :: Maybe UTCTime,
     transitsTo :: Maybe UTCTime,
-    settingsPlanets :: PlanetSelection,
     settingsAccuracy :: Accuracy
+  }
+
+data Settings = Settings
+  { settingsFormat :: Format,
+    settingsPlanets :: PlanetSelection,
+    astroCommand :: Command
   }

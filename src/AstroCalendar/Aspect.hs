@@ -41,7 +41,7 @@ findAspects planetSelection chart =
           diff = abs $ difference l1 l2
           deviation = diff - distanceDegrees aspectType
        in if isAllowed (Left aspect) diff
-            then Just (aspect, abs deviation)
+            then Just (aspect, deviation)
             else Nothing
 
 findTransits :: PlanetSelection -> Chart -> Chart -> Map.Map Transit Angle
@@ -60,6 +60,6 @@ findTransits planetSelection natal chart = Map.fromList $ mapMaybe getOrb (allTr
                       transitingPlanet = pt,
                       transitType = aspectType
                     },
-                  abs deviation
+                  deviation
                 )
             else Nothing
