@@ -9,6 +9,7 @@ import AstroCalendar.Types
 import Data.Aeson qualified as JSON
 import Data.ByteString.Lazy qualified as BL
 import Data.Default
+import Data.List (sort)
 import Data.Text.Lazy qualified as TL
 import Data.Time.Clock
 import Data.Time.Format
@@ -135,11 +136,15 @@ main = do
         ICS -> do
           calendar <- astrologicalCalendar events
           BL.putStr $ printICalendar def calendar
-        Text -> do
-          maybe (pure ()) (mapM_ (putStrLn . eventToString eventsSettings)) r
-          maybe (pure ()) (mapM_ (putStrLn . eventToString eventsSettings)) s
-          maybe (pure ()) (mapM_ (putStrLn . eventToString eventsSettings)) a
-          maybe (pure ()) (mapM_ (putStrLn . eventToString eventsSettings)) t
+        Text ->
+          mapM_ putStrLn $
+            sort $
+              concat
+                [ maybe [] (map (eventToString eventsSettings)) r,
+                  maybe [] (map (eventToString eventsSettings)) s,
+                  maybe [] (map (eventToString eventsSettings)) a,
+                  maybe [] (map (eventToString eventsSettings)) t
+                ]
         JSON -> do
           BL.putStr $
             JSON.encode $
