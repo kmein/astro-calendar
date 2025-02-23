@@ -27,7 +27,13 @@ sendRequest content = do
         object
           [ "model" .= String "gpt-4o-mini",
             "store" .= False,
-            "messages" .= [object ["role" .= String "user", "content" .= content]]
+            "messages"
+              .= [ object
+                     [ "role" .= String "developer",
+                       "content" .= String "You are an expert astrologer with a deep understanding of astrological principles. Your task is to provide clear, concise, and practical interpretations of astrological charts. Focus on specific elements such as the planetary positions and aspects. Avoid vague language and buzzwords. Use only plain text, no markdown."
+                     ],
+                   object ["role" .= String "user", "content" .= content]
+                 ]
           ]
   initialRequest <- parseRequest "https://api.openai.com/v1/chat/completions"
   let request =
