@@ -4,10 +4,10 @@
 
 module AstroCalendar.Types
   ( AspectType (..),
+    AspectKind (..),
     Chart,
     Ephemeris,
     Aspect (..),
-    Transit (..),
     TimeSeries,
     allAspects,
     allAspectTypes,
@@ -23,7 +23,6 @@ module AstroCalendar.Types
     AspectEvent (..),
     SignEvent (..),
     RetrogradeEvent (..),
-    TransitEvent (..),
     IsEvent (..),
     Settings (..),
     Command (..),
@@ -95,17 +94,11 @@ instance Symbol Planet where
 retrograde :: Char
 retrograde = '℞'
 
-data Transit = Transit
-  { natalPlanet :: Planet,
-    transitingPlanet :: Planet,
-    transitType :: AspectType
-  }
-  deriving (Eq, Ord, Show)
-
 data Aspect = Aspect
-  { planet1 :: Planet,
-    planet2 :: Planet,
-    aspectType :: AspectType
+  { aspectKind :: AspectKind,
+    planet1 :: Planet,
+    aspectType :: AspectType,
+    planet2 :: Planet
   }
   deriving (Ord, Show)
 
@@ -118,16 +111,16 @@ instance Eq Aspect where
 
 allAspects :: PlanetSelection -> [Aspect]
 allAspects planetSelection =
-  [ Aspect p1 p2 t
+  [ Aspect NatalAspect p1 t p2
     | p1 <- allPlanets planetSelection,
       p2 <- allPlanets planetSelection,
       p1 < p2,
       t <- allAspectTypes
   ]
 
-allTransits :: PlanetSelection -> [Transit]
+allTransits :: PlanetSelection -> [Aspect]
 allTransits planetSelection =
-  [ Transit pn pt t
+  [ Aspect TransitAspect pn t pt
     | pn <- allPlanets planetSelection,
       pt <- delete Moon (allPlanets planetSelection),
       t <- allAspectTypes
@@ -157,6 +150,9 @@ getValue = snd
 type Ephemeris = TimeSeries EclipticPosition
 
 type Chart = Map Planet EclipticPosition
+
+data AspectKind = NatalAspect | TransitAspect
+  deriving (Eq, Ord, Show)
 
 data AspectType = Conjunction | Sextile | Square | Trine | Opposition
   deriving (Eq, Ord, Show)
@@ -237,38 +233,19 @@ instance IsEvent AspectEvent where
 instance ToJSON AspectEvent where
   toJSON event =
     let a = aspect event
+        planet1Name = case aspectKind (aspect event) of
+          TransitAspect -> "natalPlanet"
+          NatalAspect -> "planet1"
+        planet2Name = case aspectKind (aspect event) of
+          TransitAspect -> "transitingPlanet"
+          NatalAspect -> "planet2"
      in object
           [ "startTime" .= startTime event,
             "endTime" .= endTime event,
             "exactTime" .= aspectExactTime event,
-            "planet1" .= planetToJson (planet1 a),
-            "planet2" .= planetToJson (planet2 a),
+            planet1Name .= planetToJson (planet1 a),
+            planet2Name .= planetToJson (planet2 a),
             "type" .= aspectType a
-          ]
-
-data TransitEvent = TransitEvent
-  { transit :: Transit,
-    transitExactTime :: UTCTime,
-    transitStartTime :: UTCTime,
-    transitEndTime :: UTCTime
-  }
-
-instance IsEvent TransitEvent where
-  startTime = transitStartTime
-  endTime = transitEndTime
-  summary (transit -> t) = pack [symbol (transitingPlanet t), ' ', symbol (transitType t)] <> " natal " <> pack [symbol (natalPlanet t)]
-  description e = Just $ pack ("closest at " <> show (transitExactTime e))
-
-instance ToJSON TransitEvent where
-  toJSON event =
-    let t = transit event
-     in object
-          [ "startTime" .= startTime event,
-            "endTime" .= endTime event,
-            "exactTime" .= transitExactTime event,
-            "planet1" .= planetToJson (natalPlanet t),
-            "planet2" .= planetToJson (transitingPlanet t),
-            "type" .= transitType t
           ]
 
 data RetrogradeEvent = RetrogradeEvent
@@ -299,7 +276,7 @@ data PlanetSelection = Traditional | Modern
 
 data Command
   = Events EventsSettings
-  | Chart {birthTime :: UTCTime}
+  | Chart {time :: Maybe UTCTime}
 
 data EventsSettings = EventsSettings
   { withRetrograde :: Bool,

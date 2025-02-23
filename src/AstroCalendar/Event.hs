@@ -13,7 +13,7 @@ import Data.Map qualified as Map
 import Data.Maybe
 import SwissEphemeris qualified as SwE
 
-type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent], Maybe [TransitEvent])
+type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent], Maybe [AspectEvent])
 
 signEvent :: SwE.Planet -> Ephemeris -> [SignEvent]
 signEvent planet =
@@ -53,25 +53,25 @@ aspectEvents planetSelection aspects =
                   }
           | otherwise = Nothing
 
-transitEvents :: PlanetSelection -> TimeSeries (Map.Map Transit Angle) -> [TransitEvent]
+transitEvents :: PlanetSelection -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent]
 transitEvents planetSelection transits =
   concatMap findOccurrences (allTransits planetSelection)
   where
-    findOccurrences :: Transit -> [TransitEvent]
+    findOccurrences :: Aspect -> [AspectEvent]
     findOccurrences transit = mapMaybe period $ chunkTimeSeries (Map.member transit) transits
       where
-        period :: TimeSeries (Map.Map Transit Angle) -> Maybe TransitEvent
+        period :: TimeSeries (Map.Map Aspect Angle) -> Maybe AspectEvent
         period transitTimes
           | (_, tTransits) : _ <- transitTimes,
             times <- timeSeriesTimes transitTimes,
             length transitTimes > 1,
             Map.member transit tTransits =
               Just
-                TransitEvent
-                  { transit = transit,
-                    transitStartTime = minimum times,
-                    transitEndTime = maximum times,
-                    transitExactTime = getTime (minimumBy (compare `on` ((Map.! transit) . getValue)) transitTimes)
+                AspectEvent
+                  { aspect = transit,
+                    aspectStartTime = minimum times,
+                    aspectEndTime = maximum times,
+                    aspectExactTime = getTime (minimumBy (compare `on` ((Map.! transit) . getValue)) transitTimes)
                   }
           | otherwise = Nothing
 
