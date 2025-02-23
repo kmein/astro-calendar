@@ -29,7 +29,7 @@ isAllowed :: Either Aspect Transit -> Angle -> Bool
 isAllowed aspectOrTransit distance =
   let allowableOrb = allowedOrb aspectOrTransit
       aspectDegrees = distanceDegrees (either aspectType transitType aspectOrTransit)
-   in distance < aspectDegrees + allowableOrb && distance > aspectDegrees - allowableOrb
+   in abs (distance - aspectDegrees) <= allowableOrb
 
 findAspects :: PlanetSelection -> Chart -> Map.Map Aspect Angle
 findAspects planetSelection chart =

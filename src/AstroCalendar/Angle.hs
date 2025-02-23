@@ -7,7 +7,7 @@ import Data.Aeson (ToJSON)
 import Data.Fixed (mod')
 
 newtype Angle = Angle {degrees :: Double}
-  deriving newtype (Eq, Ord, Num, Real, Show, ToJSON)
+  deriving newtype (Eq, Ord, Num, Real, Fractional, Show, ToJSON)
 
 normalize :: Angle -> Angle
 normalize angle =
