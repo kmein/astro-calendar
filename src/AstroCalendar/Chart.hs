@@ -6,6 +6,7 @@ module AstroCalendar.Chart (chartJson, chartString) where
 import AstroCalendar.Angle
 import AstroCalendar.Types
 import Data.Aeson
+import Data.List (sortOn)
 import Data.Map qualified as Map
 import SwissEphemeris as SwE
 
@@ -35,7 +36,7 @@ chartString chart aspects =
     concat
       [ map (uncurry positionString) (Map.toList chart),
         [[]],
-        map (uncurry aspectString) (Map.toList aspects)
+        map (uncurry aspectString) (sortOn (abs . snd) $ Map.toList aspects)
       ]
 
 aspectJson :: Aspect -> Angle -> Value
@@ -63,7 +64,7 @@ chartJson :: Chart -> Map.Map Aspect Angle -> Value
 chartJson chart aspects =
   object
     [ "planets" .= map (uncurry positionJson) (Map.toList chart),
-      "aspects" .= map (uncurry aspectJson) (Map.toList aspects)
+      "aspects" .= map (uncurry aspectJson) (sortOn (abs . snd) $ Map.toList aspects)
     ]
 
 showLongitudeComponents :: LongitudeComponents -> String
