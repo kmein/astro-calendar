@@ -277,6 +277,7 @@ data PlanetSelection = Traditional | Modern
 data Command
   = Events EventsSettings
   | Chart {time :: Maybe UTCTime}
+  | Synastry {time1 :: Maybe UTCTime, time2 :: Maybe UTCTime}
 
 data EventsSettings = EventsSettings
   { withRetrograde :: Bool,

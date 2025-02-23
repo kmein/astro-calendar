@@ -37,13 +37,38 @@ sample =
                         parseUTCTime
                         ( long "date"
                             <> short 'd'
-                            <> help "Birth date to calculate transits"
+                            <> help "Date to chart"
                             <> metavar "YYYY-MM-DD HH:MM"
                         )
                     )
               )
-              (progDesc "Show events")
+              (progDesc "Show chart and aspects")
           )
+          <> command
+            "synastry"
+            ( info
+                ( Synastry
+                    <$> optional
+                      ( option
+                          parseUTCTime
+                          ( long "left"
+                              <> short 'l'
+                              <> help "First date to chart"
+                              <> metavar "YYYY-MM-DD HH:MM"
+                          )
+                      )
+                    <*> optional
+                      ( option
+                          parseUTCTime
+                          ( long "right"
+                              <> short 'r'
+                              <> help "Second date to chart"
+                              <> metavar "YYYY-MM-DD HH:MM"
+                          )
+                      )
+                )
+                (progDesc "Show two chart and the aspects between them")
+            )
           <> command
             "events"
             ( info
@@ -126,13 +151,22 @@ main = do
         (fullDesc <> progDesc "Print astrological events (transits, sign entries, retrogradations)")
   let planetSelection = settingsPlanets settings
   case astroCommand settings of
+    Synastry {time1, time2} -> do
+      now <- getCurrentTime
+      chart1 <- natalChart planetSelection (fromMaybe now time1)
+      chart2 <- natalChart planetSelection (fromMaybe now time2)
+      let aspects = findTransits planetSelection chart1 chart2
+      case settingsFormat settings of
+        JSON -> BL.putStr $ JSON.encode $ chartJson [chart1, chart2] aspects
+        Text -> putStrLn $ chartString [chart1, chart2] aspects
+        ICS -> error "ICS format is not supported for synastry."
     Chart {time} -> do
       now <- getCurrentTime
       chart <- natalChart planetSelection (fromMaybe now time)
       let aspects = findAspects planetSelection chart
       case settingsFormat settings of
-        JSON -> BL.putStr $ JSON.encode $ chartJson chart aspects
-        Text -> putStrLn $ chartString chart aspects
+        JSON -> BL.putStr $ JSON.encode $ chartJson [chart] aspects
+        Text -> putStrLn $ chartString [chart] aspects
         ICS -> error "ICS format is not supported for charts."
     Events eventsSettings -> do
       events@(r, s, a, t) <- astrologicalEvents planetSelection eventsSettings =<< fullEphemeris planetSelection eventsSettings

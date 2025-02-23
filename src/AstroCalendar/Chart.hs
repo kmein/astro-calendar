@@ -6,7 +6,7 @@ module AstroCalendar.Chart (chartJson, chartString) where
 import AstroCalendar.Angle
 import AstroCalendar.Types
 import Data.Aeson
-import Data.List (sortOn)
+import Data.List (foldl', intercalate, sortOn)
 import Data.Map qualified as Map
 import SwissEphemeris as SwE
 
@@ -24,20 +24,24 @@ aspectString aspect (degreesMinutes -> (degree, minute)) =
     ++ show minute
     ++ "ʹ"
 
-positionString :: Planet -> SwE.EclipticPosition -> String
-positionString planet position =
-  [symbol planet, ' ']
-    ++ showLongitudeComponents
-      (SwE.splitDegreesZodiac $ SwE.getEclipticLongitude position)
+positionString :: Planet -> [SwE.EclipticPosition] -> String
+positionString planet positions =
+  [symbol planet, '\t']
+    ++ intercalate "\t" (map (showLongitudeComponents . SwE.splitDegreesZodiac . SwE.getEclipticLongitude) positions)
 
-chartString :: Chart -> Map.Map Aspect Angle -> String
-chartString chart aspects =
+chartString :: [Chart] -> Map.Map Aspect Angle -> String
+chartString charts aspects =
   unlines $
     concat
-      [ map (uncurry positionString) (Map.toList chart),
+      [ map (uncurry positionString) $ combineMaps charts,
         [[]],
         map (uncurry aspectString) (sortOn (abs . snd) $ Map.toList aspects)
       ]
+
+combineMaps :: (Ord k) => [Map.Map k v] -> [(k, [v])]
+combineMaps = Map.toList . foldl' insertIntoMap Map.empty
+  where
+    insertIntoMap acc m = Map.unionWith (++) acc (Map.map (: []) m)
 
 aspectJson :: Aspect -> Angle -> Value
 aspectJson aspect orb =
@@ -60,10 +64,10 @@ positionJson planet position =
   where
     longitude = SwE.splitDegreesZodiac (SwE.getEclipticLongitude position)
 
-chartJson :: Chart -> Map.Map Aspect Angle -> Value
-chartJson chart aspects =
+chartJson :: [Chart] -> Map.Map Aspect Angle -> Value
+chartJson charts aspects =
   object
-    [ "planets" .= map (uncurry positionJson) (Map.toList chart),
+    [ "charts" .= map (map (uncurry positionJson) . Map.toList) charts,
       "aspects" .= map (uncurry aspectJson) (sortOn (abs . snd) $ Map.toList aspects)
     ]
 
@@ -72,5 +76,5 @@ showLongitudeComponents longitude
   | Just sign <- longitudeZodiacSign longitude,
     degrees <- longitudeDegrees longitude,
     minutes <- longitudeMinutes longitude =
-      [symbol sign] ++ "\t" ++ show degrees ++ "° " ++ show minutes ++ "ʹ"
+      [symbol sign] ++ " " ++ show degrees ++ "° " ++ show minutes ++ "ʹ"
   | otherwise = "?"
