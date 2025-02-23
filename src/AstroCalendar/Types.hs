@@ -15,6 +15,8 @@ module AstroCalendar.Types
     allTransits,
     chunkTimeSeries,
     timeSeriesTimes,
+    planetToJson,
+    zodiacSignToJson,
     getTime,
     getValue,
     Symbol (..),
@@ -51,6 +53,15 @@ instance Symbol AspectType where
     Square -> '□'
     Trine -> '△'
     Opposition -> '☍'
+
+instance ToJSON AspectType where
+  toJSON =
+    String . \case
+      Conjunction -> "conjunction"
+      Sextile -> "sextile"
+      Square -> "square"
+      Trine -> "trine"
+      Opposition -> "opposition"
 
 instance Symbol ZodiacSignName where
   symbol = \case
@@ -172,13 +183,42 @@ instance IsEvent SignEvent where
 symbolToJson :: (Symbol a) => a -> Value
 symbolToJson p = String (T.pack [symbol p])
 
+planetToJson :: Planet -> Value
+planetToJson = \case
+  Mercury -> String "mercury"
+  Venus -> String "venus"
+  Mars -> String "mars"
+  Jupiter -> String "jupiter"
+  Saturn -> String "saturn"
+  Uranus -> String "uranus"
+  Neptune -> String "neptune"
+  Pluto -> String "pluto"
+  Moon -> String "moon"
+  Sun -> String "sun"
+  _ -> Null
+
+zodiacSignToJson :: ZodiacSignName -> Value
+zodiacSignToJson = \case
+  Aries -> "aries"
+  Taurus -> "taurus"
+  Gemini -> "gemini"
+  Cancer -> "cancer"
+  Leo -> "leo"
+  Virgo -> "virgo"
+  Libra -> "libra"
+  Scorpio -> "scorpio"
+  Sagittarius -> "sagittarius"
+  Capricorn -> "capricorn"
+  Aquarius -> "aquarius"
+  Pisces -> "pisces"
+
 instance ToJSON SignEvent where
   toJSON event =
     object
-      [ "planet" .= symbolToJson (planet event),
-        "startTime" .= toJSON (startTime event),
-        "endTime" .= toJSON (endTime event),
-        "sign" .= fmap symbolToJson (sign event)
+      [ "planet" .= planetToJson (planet event),
+        "startTime" .= startTime event,
+        "endTime" .= endTime event,
+        "sign" .= fmap zodiacSignToJson (sign event)
       ]
 
 data AspectEvent = AspectEvent
@@ -198,12 +238,12 @@ instance ToJSON AspectEvent where
   toJSON event =
     let a = aspect event
      in object
-          [ "startTime" .= toJSON (startTime event),
-            "endTime" .= toJSON (endTime event),
-            "exactTime" .= toJSON (aspectExactTime event),
-            "planet1" .= symbolToJson (planet1 a),
-            "planet2" .= symbolToJson (planet2 a),
-            "type" .= symbolToJson (aspectType a)
+          [ "startTime" .= startTime event,
+            "endTime" .= endTime event,
+            "exactTime" .= aspectExactTime event,
+            "planet1" .= planetToJson (planet1 a),
+            "planet2" .= planetToJson (planet2 a),
+            "type" .= aspectType a
           ]
 
 data TransitEvent = TransitEvent
@@ -223,12 +263,12 @@ instance ToJSON TransitEvent where
   toJSON event =
     let t = transit event
      in object
-          [ "startTime" .= toJSON (startTime event),
-            "endTime" .= toJSON (endTime event),
-            "exactTime" .= toJSON (transitExactTime event),
-            "planet1" .= symbolToJson (natalPlanet t),
-            "planet2" .= symbolToJson (transitingPlanet t),
-            "type" .= symbolToJson (transitType t)
+          [ "startTime" .= startTime event,
+            "endTime" .= endTime event,
+            "exactTime" .= transitExactTime event,
+            "planet1" .= planetToJson (natalPlanet t),
+            "planet2" .= planetToJson (transitingPlanet t),
+            "type" .= transitType t
           ]
 
 data RetrogradeEvent = RetrogradeEvent
@@ -240,9 +280,9 @@ data RetrogradeEvent = RetrogradeEvent
 instance ToJSON RetrogradeEvent where
   toJSON event =
     object
-      [ "startTime" .= toJSON (startTime event),
-        "endTime" .= toJSON (endTime event),
-        "planet" .= symbolToJson (retrogradePlanet event)
+      [ "startTime" .= startTime event,
+        "endTime" .= endTime event,
+        "planet" .= planetToJson (retrogradePlanet event)
       ]
 
 instance IsEvent RetrogradeEvent where

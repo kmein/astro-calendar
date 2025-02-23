@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module AstroCalendar.Chart where
+module AstroCalendar.Chart (chartJson, chartString) where
 
 import AstroCalendar.Angle
 import AstroCalendar.Types
@@ -9,56 +9,61 @@ import Data.Aeson
 import Data.Map qualified as Map
 import SwissEphemeris as SwE
 
+aspectString :: Aspect -> Angle -> String
+aspectString aspect (degreesMinutes -> (degree, minute)) =
+  [ symbol (planet1 aspect),
+    ' ',
+    symbol (aspectType aspect),
+    ' ',
+    symbol (planet2 aspect)
+  ]
+    ++ "\t"
+    ++ show degree
+    ++ "° "
+    ++ show minute
+    ++ "ʹ"
+
+positionString :: Planet -> SwE.EclipticPosition -> String
+positionString planet position =
+  [symbol planet, ' ']
+    ++ showLongitudeComponents
+      (SwE.splitDegreesZodiac $ SwE.getEclipticLongitude position)
+
 chartString :: Chart -> Map.Map Aspect Angle -> String
 chartString chart aspects =
   unlines $
-    map (\(p, v) -> [symbol p, ' '] ++ showLongitudeComponents (SwE.splitDegreesZodiac $ SwE.getEclipticLongitude v)) (Map.toList chart)
-      ++ [[]]
-      ++ map
-        ( \(a, degreesMinutes -> (degree, minute)) ->
-            [ symbol (planet1 a),
-              ' ',
-              symbol (aspectType a),
-              ' ',
-              symbol (planet2 a)
-            ]
-              ++ "\t"
-              ++ show degree
-              ++ "° "
-              ++ show minute
-              ++ "ʹ"
-        )
-        (Map.toList aspects)
+    concat
+      [ map (uncurry positionString) (Map.toList chart),
+        [[]],
+        map (uncurry aspectString) (Map.toList aspects)
+      ]
+
+aspectJson :: Aspect -> Angle -> Value
+aspectJson aspect orb =
+  object
+    [ "planet1" .= planetToJson (planet1 aspect),
+      "planet2" .= planetToJson (planet2 aspect),
+      "type" .= aspectType aspect,
+      "orb" .= orb
+    ]
+
+positionJson :: Planet -> EclipticPosition -> Value
+positionJson planet position =
+  object
+    [ "sign" .= fmap zodiacSignToJson (SwE.longitudeZodiacSign longitude),
+      "planet" .= planetToJson planet,
+      "degrees" .= SwE.longitudeDegrees longitude,
+      "minutes" .= SwE.longitudeMinutes longitude,
+      "retrograde" .= (SwE.lngSpeed position < 0)
+    ]
+  where
+    longitude = SwE.splitDegreesZodiac (SwE.getEclipticLongitude position)
 
 chartJson :: Chart -> Map.Map Aspect Angle -> Value
 chartJson chart aspects =
   object
-    [ "planets"
-        .= map
-          ( \(p, v) ->
-              let longitude = SwE.splitDegreesZodiac (SwE.getEclipticLongitude v)
-               in object
-                    [ "sign" .= fmap (toJSON . symbol) (SwE.longitudeZodiacSign longitude),
-                      "planet" .= toJSON [symbol p],
-                      "degrees" .= toJSON (SwE.longitudeDegrees longitude),
-                      "minutes" .= toJSON (SwE.longitudeMinutes longitude),
-                      "speed" .= SwE.lngSpeed v
-                    ]
-          )
-          (Map.toList chart),
-      "aspects"
-        .= toJSON
-          ( map
-              ( \(a, orb) ->
-                  object
-                    [ "planet1" .= toJSON (symbol (planet1 a)),
-                      "planet2" .= toJSON (symbol (planet2 a)),
-                      "type" .= toJSON (symbol (aspectType a)),
-                      "orb" .= toJSON orb
-                    ]
-              )
-              (Map.toList aspects)
-          )
+    [ "planets" .= map (uncurry positionJson) (Map.toList chart),
+      "aspects" .= map (uncurry aspectJson) (Map.toList aspects)
     ]
 
 showLongitudeComponents :: LongitudeComponents -> String
