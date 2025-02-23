@@ -292,5 +292,6 @@ data EventsSettings = EventsSettings
 data Settings = Settings
   { settingsFormat :: Format,
     settingsPlanets :: PlanetSelection,
+    settingsInterpret :: Bool,
     astroCommand :: Command
   }

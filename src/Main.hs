@@ -5,7 +5,9 @@ import AstroCalendar.Chart
 import AstroCalendar.Ephemeris
 import AstroCalendar.Event
 import AstroCalendar.ICalendar
+import AstroCalendar.Interpretation
 import AstroCalendar.Types
+import Control.Monad
 import Data.Aeson qualified as JSON
 import Data.ByteString.Lazy qualified as BL
 import Data.Default
@@ -27,6 +29,11 @@ sample =
     <*> ( flag' Traditional (long "traditional" <> help "Use traditional 7 planets")
             <|> flag' Modern (long "modern" <> help "Use modern 10 planets")
         )
+    <*> switch
+      ( long "interpret"
+          <> short 'i'
+          <> help "Whether to offer delineations on the chart"
+      )
     <*> subparser
       ( command
           "chart"
@@ -158,7 +165,21 @@ main = do
       let aspects = findTransits planetSelection chart1 chart2
       case settingsFormat settings of
         JSON -> BL.putStr $ JSON.encode $ chartJson [chart1, chart2] aspects
-        Text -> putStrLn $ chartString [chart1, chart2] aspects
+        Text -> do
+          let c = chartString [chart1, chart2] aspects
+          putStrLn c
+          when (settingsInterpret settings) $
+            case (time1, time2) of
+              (Just _, Just _) -> do
+                delineations <- sendRequest $ "Please concisely interpret the following synastry chart in three paragraphs (one for chart 1, one for chart 2, one for the aspects):\n\n" ++ c
+                maybe (return ()) putStrLn delineations
+              (Just _, Nothing) -> do
+                delineations <- sendRequest $ "Please concisely characterize the current transit situationfor the birth chart (on the left) in one paragraph:\n\n" ++ c
+                maybe (return ()) putStrLn delineations
+              (Nothing, Just _) -> do
+                delineations <- sendRequest $ "Please concisely characterize the current transit situationfor the birth chart (on the right) in one paragraph:\n\n" ++ c
+                maybe (return ()) putStrLn delineations
+              _ -> fail "No date given."
         ICS -> error "ICS format is not supported for synastry."
     Chart {time} -> do
       now <- getCurrentTime
@@ -166,7 +187,12 @@ main = do
       let aspects = findAspects planetSelection chart
       case settingsFormat settings of
         JSON -> BL.putStr $ JSON.encode $ chartJson [chart] aspects
-        Text -> putStrLn $ chartString [chart] aspects
+        Text -> do
+          let c = chartString [chart] aspects
+          putStrLn c
+          when (settingsInterpret settings) $ do
+            delineations <- sendRequest $ "Please concisely interpret the following birth chart in two paragraphs (one for the placements, one for the aspects):\n\n" ++ c
+            maybe (return ()) putStrLn delineations
         ICS -> error "ICS format is not supported for charts."
     Events eventsSettings -> do
       events@(r, s, a, t) <- astrologicalEvents planetSelection eventsSettings =<< fullEphemeris planetSelection eventsSettings
