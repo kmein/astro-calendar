@@ -30,7 +30,7 @@
       pkgs = pkgsForSystem system;
     in {
       default = pkgs.astro-calendar.env.overrideAttrs (old: old // {
-        buildInputs = [ pkgs.ghcid pkgs.cabal-install pkgs.cabal2nix pkgs.haskellPackages.ormolu ];
+        buildInputs = [ pkgs.ghcid pkgs.cabal-install pkgs.haskellPackages.haskell-language-server pkgs.cabal2nix pkgs.haskellPackages.ormolu ];
         shellHook = ''
           export SE_EPHE_PATH=${swisseph.outPath}/ephe
         '';
