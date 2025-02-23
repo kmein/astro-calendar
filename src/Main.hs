@@ -10,6 +10,7 @@ import Data.Aeson qualified as JSON
 import Data.ByteString.Lazy qualified as BL
 import Data.Default
 import Data.List (sort)
+import Data.Maybe
 import Data.Text.Lazy qualified as TL
 import Data.Time.Clock
 import Data.Time.Format
@@ -31,12 +32,14 @@ sample =
           "chart"
           ( info
               ( Chart
-                  <$> option
-                    parseUTCTime
-                    ( long "date"
-                        <> short 'd'
-                        <> help "Birth date to calculate transits"
-                        <> metavar "YYYY-MM-DD HH:MM"
+                  <$> optional
+                    ( option
+                        parseUTCTime
+                        ( long "date"
+                            <> short 'd'
+                            <> help "Birth date to calculate transits"
+                            <> metavar "YYYY-MM-DD HH:MM"
+                        )
                     )
               )
               (progDesc "Show events")
@@ -123,8 +126,9 @@ main = do
         (fullDesc <> progDesc "Print astrological events (transits, sign entries, retrogradations)")
   let planetSelection = settingsPlanets settings
   case astroCommand settings of
-    Chart {birthTime} -> do
-      chart <- natalChart planetSelection birthTime
+    Chart {time} -> do
+      now <- getCurrentTime
+      chart <- natalChart planetSelection (fromMaybe now time)
       let aspects = findAspects planetSelection chart
       case settingsFormat settings of
         JSON -> BL.putStr $ JSON.encode $ chartJson chart aspects
