@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 import AstroCalendar.Aspect
@@ -17,6 +18,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Time.Clock
 import Data.Time.Format
 import Options.Applicative
+import SwissEphemeris qualified as SwE
 import Text.ICalendar.Printer
 
 sample :: Parser Settings
@@ -28,6 +30,13 @@ sample =
         )
     <*> ( flag' Traditional (long "traditional" <> help "Use traditional 7 planets")
             <|> flag' Modern (long "modern" <> help "Use modern 10 planets")
+            <|> option
+              (Custom <$> parsePlanets)
+              ( long "only"
+                  <> short 'p'
+                  <> help "Select only some planets"
+                  <> metavar "PLANET1,PLANET2,..."
+              )
         )
     <*> switch
       ( long "interpret"
@@ -139,6 +148,22 @@ parseUTCTime = eitherReader $ \input ->
   case parseTimeM True defaultTimeLocale "%Y-%m-%d %H:%M" input of
     Just time -> Right time
     Nothing -> Left "Invalid time format. Expected format: YYYY-MM-DD HH:MM"
+
+parsePlanets :: ReadM [SwE.Planet]
+parsePlanets = eitherReader $ \input -> mapM parsePlanet (TL.splitOn "," $ TL.pack input)
+  where
+    parsePlanet = \case
+      "sun" -> Right SwE.Sun
+      "moon" -> Right SwE.Moon
+      "mercury" -> Right SwE.Mercury
+      "venus" -> Right SwE.Venus
+      "mars" -> Right SwE.Mars
+      "jupiter" -> Right SwE.Jupiter
+      "saturn" -> Right SwE.Saturn
+      "uranus" -> Right SwE.Uranus
+      "neptune" -> Right SwE.Neptune
+      "pluto" -> Right SwE.Pluto
+      _ -> Left "Invalid planet"
 
 eventToString :: (IsEvent e) => EventsSettings -> e -> String
 eventToString settings event = unwords [strptime (startTime event), strptime (endTime event), TL.unpack (summary event), maybe "" TL.unpack (description event)]

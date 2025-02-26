@@ -132,6 +132,7 @@ allAspectTypes = [Conjunction, Sextile, Square, Trine, Opposition]
 allPlanets :: PlanetSelection -> [Planet]
 allPlanets Modern = [Sun .. Pluto]
 allPlanets Traditional = [Sun .. Saturn]
+allPlanets (Custom cs) = sort cs
 
 type TimeSeries a = [(UTCTime, a)]
 
@@ -272,7 +273,7 @@ data Format = ICS | Text | JSON
 
 data Accuracy = Monthly | Daily | Hourly | Minutely
 
-data PlanetSelection = Traditional | Modern
+data PlanetSelection = Traditional | Modern | Custom [Planet]
 
 data Command
   = Events EventsSettings
