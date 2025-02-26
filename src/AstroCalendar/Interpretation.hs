@@ -32,7 +32,10 @@ sendRequest content = do
                      [ "role" .= String "developer",
                        "content" .= String "You are an expert astrologer with a deep understanding of astrological principles. Your task is to provide clear, concise, and practical interpretations of astrological charts. Focus on specific elements such as the planetary positions and aspects. Avoid vague language and buzzwords. Use only plain text, no markdown."
                      ],
-                   object ["role" .= String "user", "content" .= content]
+                   object
+                     [ "role" .= String "user",
+                       "content" .= content
+                     ]
                  ]
           ]
   initialRequest <- parseRequest "https://api.openai.com/v1/chat/completions"

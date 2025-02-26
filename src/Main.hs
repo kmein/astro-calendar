@@ -150,7 +150,7 @@ parseUTCTime = eitherReader $ \input ->
     Nothing -> Left "Invalid time format. Expected format: YYYY-MM-DD HH:MM"
 
 parsePlanets :: ReadM [SwE.Planet]
-parsePlanets = eitherReader $ \input -> mapM parsePlanet (TL.splitOn "," $ TL.pack input)
+parsePlanets = eitherReader (mapM parsePlanet . TL.splitOn "," . TL.pack)
   where
     parsePlanet = \case
       "sun" -> Right SwE.Sun
