@@ -35,7 +35,7 @@ findAspects :: PlanetSelection -> Chart -> Map.Map Aspect Angle
 findAspects planetSelection chart =
   Map.fromList $ mapMaybe getOrb (allAspects planetSelection)
   where
-    getOrb aspect@(Aspect _ p1 aspectType p2) =
+    getOrb aspect@(Aspect p1 aspectType p2) =
       let l1 = Angle $ SwE.lng $ chart Map.! p1
           l2 = Angle $ SwE.lng $ chart Map.! p2
           diff = abs $ difference l1 l2
@@ -47,7 +47,7 @@ findAspects planetSelection chart =
 findTransits :: PlanetSelection -> Chart -> Chart -> Map.Map Aspect Angle
 findTransits planetSelection natal chart = Map.fromList $ mapMaybe getOrb (allTransits planetSelection)
   where
-    getOrb aspect@(Aspect _ pn aspectType pt) =
+    getOrb aspect@(Aspect pn aspectType pt) =
       let ln = Angle $ SwE.lng $ natal Map.! pn
           lt = Angle $ SwE.lng $ chart Map.! pt
           diff = abs $ difference ln lt
@@ -55,12 +55,7 @@ findTransits planetSelection natal chart = Map.fromList $ mapMaybe getOrb (allTr
        in if isAllowed aspect diff
             then
               Just
-                ( Aspect
-                    { planet1 = pn,
-                      planet2 = pt,
-                      aspectType = aspectType,
-                      aspectKind = TransitAspect
-                    },
+                ( Aspect pn aspectType pt,
                   deviation
                 )
             else Nothing

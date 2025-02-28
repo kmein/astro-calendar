@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -95,8 +98,7 @@ retrograde :: Char
 retrograde = '℞'
 
 data Aspect = Aspect
-  { aspectKind :: AspectKind,
-    planet1 :: Planet,
+  { planet1 :: Planet,
     aspectType :: AspectType,
     planet2 :: Planet
   }
@@ -111,7 +113,7 @@ instance Eq Aspect where
 
 allAspects :: PlanetSelection -> [Aspect]
 allAspects planetSelection =
-  [ Aspect NatalAspect p1 t p2
+  [ Aspect p1 t p2
     | p1 <- allPlanets planetSelection,
       p2 <- allPlanets planetSelection,
       p1 < p2,
@@ -120,7 +122,7 @@ allAspects planetSelection =
 
 allTransits :: PlanetSelection -> [Aspect]
 allTransits planetSelection =
-  [ Aspect TransitAspect pn t pt
+  [ Aspect pn t pt
     | pn <- allPlanets planetSelection,
       pt <- delete Moon (allPlanets planetSelection),
       t <- allAspectTypes
@@ -218,34 +220,40 @@ instance ToJSON SignEvent where
         "sign" .= fmap zodiacSignToJson (sign event)
       ]
 
-data AspectEvent = AspectEvent
+data AspectEvent (k :: AspectKind) = AspectEvent
   { aspect :: Aspect,
     aspectExactTime :: UTCTime,
     aspectStartTime :: UTCTime,
     aspectEndTime :: UTCTime
   }
 
-instance IsEvent AspectEvent where
+instance IsEvent (AspectEvent k) where
   startTime = aspectStartTime
   endTime = aspectEndTime
   summary (aspect -> a) = pack [symbol (planet1 a), ' ', symbol (aspectType a), ' ', symbol (planet2 a)]
   description e = Just $ pack ("closest at " <> show (aspectExactTime e))
 
-instance ToJSON AspectEvent where
+instance ToJSON (AspectEvent NatalAspect) where
   toJSON event =
     let a = aspect event
-        planet1Name = case aspectKind (aspect event) of
-          TransitAspect -> "natalPlanet"
-          NatalAspect -> "planet1"
-        planet2Name = case aspectKind (aspect event) of
-          TransitAspect -> "transitingPlanet"
-          NatalAspect -> "planet2"
      in object
           [ "startTime" .= startTime event,
             "endTime" .= endTime event,
             "exactTime" .= aspectExactTime event,
-            planet1Name .= planetToJson (planet1 a),
-            planet2Name .= planetToJson (planet2 a),
+            "planet1" .= planetToJson (planet1 a),
+            "planet2" .= planetToJson (planet2 a),
+            "type" .= aspectType a
+          ]
+
+instance ToJSON (AspectEvent TransitAspect) where
+  toJSON event =
+    let a = aspect event
+     in object
+          [ "startTime" .= startTime event,
+            "endTime" .= endTime event,
+            "exactTime" .= aspectExactTime event,
+            "natalPlanet" .= planetToJson (planet1 a),
+            "transitingPlanet" .= planetToJson (planet2 a),
             "type" .= aspectType a
           ]
 

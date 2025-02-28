@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DataKinds #-}
 
 module AstroCalendar.Event (astrologicalEvents, AstrologicalEvents) where
 
@@ -13,7 +14,7 @@ import Data.Map qualified as Map
 import Data.Maybe
 import SwissEphemeris qualified as SwE
 
-type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent], Maybe [AspectEvent])
+type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent NatalAspect], Maybe [AspectEvent TransitAspect])
 
 signEvent :: SwE.Planet -> Ephemeris -> [SignEvent]
 signEvent planet =
@@ -32,14 +33,14 @@ signEvent planet =
     signFromPosition :: SwE.EclipticPosition -> Maybe SwE.ZodiacSignName
     signFromPosition = SwE.longitudeZodiacSign . SwE.splitDegreesZodiac . SwE.getEclipticLongitude
 
-aspectEvents :: PlanetSelection -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent]
+aspectEvents :: PlanetSelection -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent NatalAspect]
 aspectEvents planetSelection aspects =
   concatMap findOccurrences (allAspects planetSelection)
   where
-    findOccurrences :: Aspect -> [AspectEvent]
+    findOccurrences :: Aspect -> [AspectEvent NatalAspect]
     findOccurrences aspect = mapMaybe period $ chunkTimeSeries (Map.member aspect) aspects
       where
-        period :: TimeSeries (Map.Map Aspect Angle) -> Maybe AspectEvent
+        period :: TimeSeries (Map.Map Aspect Angle) -> Maybe (AspectEvent NatalAspect)
         period aspectTimes
           | (_, tAspects) : _ <- aspectTimes,
             times <- timeSeriesTimes aspectTimes,
@@ -53,14 +54,14 @@ aspectEvents planetSelection aspects =
                   }
           | otherwise = Nothing
 
-transitEvents :: PlanetSelection -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent]
+transitEvents :: PlanetSelection -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent TransitAspect]
 transitEvents planetSelection transits =
   concatMap findOccurrences (allTransits planetSelection)
   where
-    findOccurrences :: Aspect -> [AspectEvent]
+    findOccurrences :: Aspect -> [AspectEvent TransitAspect]
     findOccurrences transit = mapMaybe period $ chunkTimeSeries (Map.member transit) transits
       where
-        period :: TimeSeries (Map.Map Aspect Angle) -> Maybe AspectEvent
+        period :: TimeSeries (Map.Map Aspect Angle) -> Maybe (AspectEvent TransitAspect)
         period transitTimes
           | (_, tTransits) : _ <- transitTimes,
             times <- timeSeriesTimes transitTimes,
