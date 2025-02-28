@@ -7,6 +7,7 @@ import AstroCalendar.Angle (Angle)
 import AstroCalendar.Aspect
 import AstroCalendar.Ephemeris (natalChart, parallelEphemeris)
 import AstroCalendar.Types
+import AstroCalendar.Eclipse
 import Control.Arrow (second)
 import Data.Function (on)
 import Data.List (minimumBy)
@@ -14,7 +15,7 @@ import Data.Map qualified as Map
 import Data.Maybe
 import SwissEphemeris qualified as SwE
 
-type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent NatalAspect], Maybe [AspectEvent TransitAspect])
+type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent NatalAspect], Maybe [AspectEvent TransitAspect], Maybe [EclipseEvent])
 
 signEvent :: SwE.Planet -> Ephemeris -> [SignEvent]
 signEvent planet =
@@ -97,11 +98,13 @@ retrogradeEvents planet =
 astrologicalEvents :: PlanetSelection -> EventsSettings -> Map.Map SwE.Planet Ephemeris -> IO AstrologicalEvents
 astrologicalEvents planetSelection settings planetEphemeris = do
   ts <- transitPeriods (transitsTo settings)
+  eclipses <- findEclipses settings
   return
     ( if withRetrograde settings then Just retrogradePeriods else Nothing,
       if withSigns settings then Just signPeriods else Nothing,
       if withAspects settings then Just aspectPeriods else Nothing,
-      ts
+      ts,
+      if withEclipses settings then Just eclipses else Nothing
     )
   where
     retrogradePeriods = concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris

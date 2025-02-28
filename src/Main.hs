@@ -105,6 +105,10 @@ sample =
                                   <> short 's'
                                   <> help "Include sign transitions"
                               )
+                            <*> switch
+                              ( long "eclipses"
+                                  <> help "Include eclipses"
+                              )
                             <*> optional
                               ( option
                                   parseUTCTime
@@ -220,7 +224,7 @@ main = do
             maybe (return ()) putStrLn delineations
         ICS -> error "ICS format is not supported for charts."
     Events eventsSettings -> do
-      events@(r, s, a, t) <- astrologicalEvents planetSelection eventsSettings =<< fullEphemeris planetSelection eventsSettings
+      events@(r, s, a, t, e) <- astrologicalEvents planetSelection eventsSettings =<< fullEphemeris planetSelection eventsSettings
       case settingsFormat settings of
         ICS -> do
           calendar <- astrologicalCalendar events
@@ -232,7 +236,8 @@ main = do
                 [ maybe [] (map (eventToString eventsSettings)) r,
                   maybe [] (map (eventToString eventsSettings)) s,
                   maybe [] (map (eventToString eventsSettings)) a,
-                  maybe [] (map (eventToString eventsSettings)) t
+                  maybe [] (map (eventToString eventsSettings)) t,
+                  maybe [] (map (eventToString eventsSettings)) e
                 ]
         JSON -> do
           BL.putStrLn $
@@ -241,5 +246,6 @@ main = do
                 [ "retrograde" JSON..= JSON.toJSON r,
                   "sign" JSON..= JSON.toJSON s,
                   "aspect" JSON..= JSON.toJSON a,
-                  "transits" JSON..= JSON.toJSON t
+                  "transits" JSON..= JSON.toJSON t,
+                  "eclipses" JSON..= JSON.toJSON e
                 ]

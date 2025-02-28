@@ -33,6 +33,8 @@ module AstroCalendar.Types
     Accuracy (..),
     EventsSettings (..),
     PlanetSelection (..),
+    EclipseEvent (..),
+    dateRange,
   )
 where
 
@@ -40,10 +42,13 @@ import Data.Aeson
 import Data.Function (on)
 import Data.List
 import Data.Map (Map)
+import Data.Maybe
 import Data.Text qualified as T (pack)
 import Data.Text.Lazy (Text, pack)
+import Data.Time.Calendar
 import Data.Time.Clock
-import SwissEphemeris (EclipticPosition, Planet (..), ZodiacSignName (..))
+import GHC.IO (unsafePerformIO)
+import SwissEphemeris (EclipticPosition, FromJulianDay (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
 
 class Symbol a where
   symbol :: a -> Char
@@ -94,7 +99,9 @@ instance Symbol Planet where
     Sun -> '☉'
     _ -> '\xfffd' -- replacement character
 
-retrograde :: Char
+eclipse, occultation, retrograde :: Char
+eclipse = '🝶'
+occultation = '🝵'
 retrograde = '℞'
 
 data Aspect = Aspect
@@ -257,6 +264,38 @@ instance ToJSON (AspectEvent TransitAspect) where
             "type" .= aspectType a
           ]
 
+data EclipseEvent = SolarEclipse SolarEclipseInformation | LunarEclipse LunarEclipseInformation
+
+instance IsEvent EclipseEvent where
+  startTime =
+    unsafeJulianToUTC . \case
+      SolarEclipse e -> solarEclipseBegin e
+      LunarEclipse e -> lunarEclipsePartialPhaseBegin e
+  endTime =
+    unsafeJulianToUTC . \case
+      SolarEclipse e -> solarEclipseEnd e
+      LunarEclipse e -> lunarEclipsePartialPhaseEnd e
+  summary = \case
+    SolarEclipse e -> pack $ [occultation, ' ', symbol Sun, ' '] ++ show (solarEclipseType e)
+    LunarEclipse e -> pack $ [eclipse, ' ', symbol Moon, ' '] ++ show (lunarEclipseType e)
+  description =
+    Just . pack . ("Maximum at " ++) . show . unsafeJulianToUTC . \case
+      LunarEclipse e -> lunarEclipseMax e
+      SolarEclipse e -> solarEclipseMax e
+
+unsafeJulianToUTC :: JulianDayUT1 -> UTCTime
+unsafeJulianToUTC = unsafePerformIO . fromJulianDay
+
+instance ToJSON EclipseEvent where
+  toJSON event =
+    object
+      [ "startTime" .= startTime event,
+        "endTime" .= endTime event,
+        "kind" .= case event of
+          LunarEclipse _ -> "lunar" :: String
+          SolarEclipse _ -> "solar"
+      ]
+
 data RetrogradeEvent = RetrogradeEvent
   { retrogradePlanet :: Planet,
     retrogradeStartTime :: UTCTime,
@@ -292,6 +331,7 @@ data EventsSettings = EventsSettings
   { withRetrograde :: Bool,
     withAspects :: Bool,
     withSigns :: Bool,
+    withEclipses :: Bool,
     settingsBegin :: Maybe UTCTime,
     settingsEnd :: Maybe UTCTime,
     transitsTo :: Maybe UTCTime,
@@ -304,3 +344,12 @@ data Settings = Settings
     settingsInterpret :: Bool,
     astroCommand :: Command
   }
+
+currentYear :: Year
+currentYear = 2025
+
+dateRange :: EventsSettings -> (UTCTime, UTCTime)
+dateRange settings = (beginning, end)
+  where
+    beginning = fromMaybe (UTCTime (fromGregorian currentYear 1 1) 0) (settingsBegin settings)
+    end = fromMaybe (UTCTime (fromGregorian currentYear 12 31) 86400) (settingsEnd settings)
