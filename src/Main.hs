@@ -140,6 +140,8 @@ sample =
                                     <|> flag' Hourly (long "hourly" <> help "Check for every hour")
                                     <|> flag' Monthly (long "monthly" <> help "Check for every month")
                                     <|> flag' Minutely (long "minutely" <> help "Check for every minute")
+                                    <|> flag' Yearly (long "yearly" <> help "Check for every year")
+                                    <|> pure Daily
                                 )
                         )
                 )
@@ -177,6 +179,7 @@ eventToString settings event = unwords [strptime (startTime event), strptime (en
       Hourly -> "%Y-%m-%d %H"
       Daily -> "%Y-%m-%d"
       Monthly -> "%Y-%m"
+      Yearly -> "%Y"
 
 main :: IO ()
 main = do

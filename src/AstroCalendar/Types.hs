@@ -318,7 +318,8 @@ instance IsEvent RetrogradeEvent where
 
 data Format = ICS | Text | JSON
 
-data Accuracy = Monthly | Daily | Hourly | Minutely
+data Accuracy = Yearly | Monthly | Daily | Hourly | Minutely
+  deriving (Show)
 
 data PlanetSelection = Traditional | Modern | Custom [Planet]
 

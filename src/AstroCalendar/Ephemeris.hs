@@ -14,6 +14,7 @@ yearTimes settings =
         Hourly -> secondsToNominalDiffTime $ 60 * 60
         Daily -> nominalDay
         Monthly -> 30 * nominalDay
+        Yearly -> 365.2425 * nominalDay
       (beginning, end) = dateRange settings
    in takeWhile (<= end) (iterate (addUTCTime step) beginning)
 
