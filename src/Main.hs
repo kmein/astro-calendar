@@ -38,7 +38,7 @@ sample =
                   <> help "Select only some planets"
                   <> metavar "PLANET1,PLANET2,..."
               )
-            <|> pure TraditionalPlanets
+            <|> pure ModernPlanets
         )
     <*> ( flag' AllAspectTypes (long "all-aspects" <> help "All aspects")
             <|> flag' HardAspectTypes (long "only-hard-aspects" <> help "Only hard aspects")
@@ -195,14 +195,15 @@ parseAspectTypes = eitherReader (mapM parseAspectType . TL.splitOn "," . TL.pack
       _ -> Left "Invalid aspect"
 
 eventToString :: (IsEvent e) => EventsSettings -> e -> String
-eventToString settings event = unwords [strptime (startTime event), strptime (endTime event), TL.unpack (summary event), maybe "" TL.unpack (description event)]
+eventToString settings event =
+  unwords
+    [ strptime (startTime event),
+      strptime (endTime event),
+      TL.unpack (summary event),
+      maybe "" strptime (maxTime event)
+    ]
   where
-    strptime = formatTime defaultTimeLocale $ case settingsPrecision settings of
-      Minutely -> "%Y-%m-%d %H:%M"
-      Hourly -> "%Y-%m-%d %H"
-      Daily -> "%Y-%m-%d"
-      Monthly -> "%Y-%m"
-      Yearly -> "%Y"
+    strptime = formatTimeWithPrecision (settingsPrecision settings)
 
 main :: IO ()
 main = do
@@ -251,10 +252,10 @@ main = do
             maybe (return ()) putStrLn delineations
         ICS -> error "ICS format is not supported for charts."
     Events eventsSettings -> do
-      events@(r, s, a, t, e) <- astrologicalEvents aspectSelection planetSelection eventsSettings =<< fullEphemeris planetSelection eventsSettings
+      events@(r, s, a, t, e) <- astrologicalEvents aspectSelection planetSelection eventsSettings
       case settingsFormat settings of
         ICS -> do
-          calendar <- astrologicalCalendar events
+          calendar <- astrologicalCalendar (settingsPrecision eventsSettings) events
           BL.putStrLn $ printICalendar def calendar
         Text ->
           mapM_ putStrLn $

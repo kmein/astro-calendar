@@ -12,21 +12,24 @@ import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUID
 import Text.ICalendar
 
-astrologicalCalendar :: AstrologicalEvents -> IO VCalendar
-astrologicalCalendar (retrogradePeriods, signPeriods, aspectPeriods, transitPeriods, eclipses) = do
-  signVEvents <- traverse makeVEvent (fromMaybe [] signPeriods)
-  retrogradeVEvents <- traverse makeVEvent (fromMaybe [] retrogradePeriods)
-  aspectVEvents <- traverse makeVEvent (fromMaybe [] aspectPeriods)
-  transitVEvents <- traverse makeVEvent (fromMaybe [] transitPeriods)
-  eclipseVEvents <- traverse makeVEvent (fromMaybe [] eclipses)
+astrologicalCalendar :: Precision -> AstrologicalEvents -> IO VCalendar
+astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, transitPeriods, eclipses) = do
+  signVEvents <- traverse makeVEvent' (fromMaybe [] signPeriods)
+  retrogradeVEvents <- traverse makeVEvent' (fromMaybe [] retrogradePeriods)
+  aspectVEvents <- traverse makeVEvent' (fromMaybe [] aspectPeriods)
+  transitVEvents <- traverse makeVEvent' (fromMaybe [] transitPeriods)
+  eclipseVEvents <- traverse makeVEvent' (fromMaybe [] eclipses)
   let events = signVEvents ++ retrogradeVEvents ++ aspectVEvents ++ transitVEvents ++ eclipseVEvents
   return $
     def
       { vcEvents = Map.fromList (map (\e -> ((uidValue (veUID e), Nothing), e)) events)
       }
+  where
+    makeVEvent' :: (IsEvent e) => e -> IO VEvent
+    makeVEvent' = makeVEvent precision
 
-makeVEvent :: (IsEvent e) => e -> IO VEvent
-makeVEvent e = do
+makeVEvent :: (IsEvent e) => Precision -> e -> IO VEvent
+makeVEvent precision e = do
   uuid <- TL.fromStrict . UUID.toText <$> UUID.nextRandom
   pure $
     VEvent
@@ -34,14 +37,14 @@ makeVEvent e = do
           fmap
             ( \d ->
                 ( Description
-                    { descriptionValue = d,
+                    { descriptionValue = TL.pack (formatTimeWithPrecision precision d),
                       descriptionAltRep = def,
                       descriptionLanguage = def,
                       descriptionOther = def
                     }
                 )
             )
-            (description e),
+            (maxTime e),
         veSummary =
           Just
             ( Summary

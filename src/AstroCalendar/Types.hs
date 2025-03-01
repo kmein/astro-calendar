@@ -31,6 +31,7 @@ module AstroCalendar.Types
     Command (..),
     Format (..),
     Precision (..),
+    formatTimeWithPrecision,
     EventsSettings (..),
     PlanetSelection (..),
     AspectTypeSelection (..),
@@ -47,6 +48,7 @@ import Data.Maybe
 import Data.Text qualified as T (pack)
 import Data.Text.Lazy (Text, pack)
 import Data.Time.Calendar
+import Data.Time.Format
 import Data.Time.Clock
 import GHC.IO (unsafePerformIO)
 import SwissEphemeris (EclipticPosition, FromJulianDay (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
@@ -174,7 +176,7 @@ class IsEvent e where
   startTime :: e -> UTCTime
   endTime :: e -> UTCTime
   summary :: e -> Text
-  description :: e -> Maybe Text
+  maxTime :: e -> Maybe UTCTime
 
 data SignEvent = SignEvent
   { planet :: Planet,
@@ -187,7 +189,7 @@ instance IsEvent SignEvent where
   startTime = signStartTime
   endTime = signEndTime
   summary e = pack [symbol (planet e), ' ', maybe '?' symbol (sign e)]
-  description _ = Nothing
+  maxTime _ = Nothing
 
 symbolToJson :: (Symbol a) => a -> Value
 symbolToJson p = String (T.pack [symbol p])
@@ -237,11 +239,17 @@ data AspectEvent (k :: AspectKind) = AspectEvent
     aspectEndTime :: UTCTime
   }
 
-instance IsEvent (AspectEvent k) where
+instance IsEvent (AspectEvent NatalAspect) where
   startTime = aspectStartTime
   endTime = aspectEndTime
   summary (aspect -> a) = pack [symbol (planet1 a), ' ', symbol (aspectType a), ' ', symbol (planet2 a)]
-  description e = Just $ pack ("closest at " <> show (aspectExactTime e))
+  maxTime = Just . aspectExactTime
+
+instance IsEvent (AspectEvent TransitAspect) where
+  startTime = aspectStartTime
+  endTime = aspectEndTime
+  summary (aspect -> a) = pack [symbol (planet2 a), ' ', symbol (aspectType a)] <> " natal " <> pack [symbol (planet1 a)]
+  maxTime = Just . aspectExactTime
 
 instance ToJSON (AspectEvent NatalAspect) where
   toJSON event =
@@ -281,8 +289,8 @@ instance IsEvent EclipseEvent where
   summary = \case
     SolarEclipse e -> pack $ [occultation, ' ', symbol Sun, ' '] ++ show (solarEclipseType e)
     LunarEclipse e -> pack $ [eclipse, ' ', symbol Moon, ' '] ++ show (lunarEclipseType e)
-  description =
-    Just . pack . ("Maximum at " ++) . show . unsafeJulianToUTC . \case
+  maxTime =
+    Just . unsafeJulianToUTC . \case
       LunarEclipse e -> lunarEclipseMax e
       SolarEclipse e -> solarEclipseMax e
 
@@ -317,12 +325,20 @@ instance IsEvent RetrogradeEvent where
   startTime = retrogradeStartTime
   endTime = retrogradeEndTime
   summary e = pack [symbol (retrogradePlanet e), ' ', retrograde]
-  description _ = Nothing
+  maxTime _ = Nothing
 
 data Format = ICS | Text | JSON
 
 data Precision = Yearly | Monthly | Daily | Hourly | Minutely
   deriving (Show)
+
+formatTimeWithPrecision :: FormatTime a => Precision -> a -> String
+formatTimeWithPrecision precision = formatTime defaultTimeLocale $ case precision of
+  Minutely -> "%Y-%m-%d %H:%M"
+  Hourly -> "%Y-%m-%d %H"
+  Daily -> "%Y-%m-%d"
+  Monthly -> "%Y-%m"
+  Yearly -> "%Y"
 
 data PlanetSelection = TraditionalPlanets | ModernPlanets | CustomPlanets [Planet]
 

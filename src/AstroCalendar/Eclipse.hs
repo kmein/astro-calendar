@@ -1,13 +1,14 @@
 module AstroCalendar.Eclipse (findEclipses) where
 
 import AstroCalendar.Types
+import Control.Parallel
 import SwissEphemeris qualified as SwE
 
 findEclipses :: EventsSettings -> IO [EclipseEvent]
-findEclipses settings =
-  (++)
-    <$> (map SolarEclipse <$> findSolarEclipses settings)
-    <*> (map LunarEclipse <$> findLunarEclipses settings)
+findEclipses settings = do
+  lunar <- map LunarEclipse <$> findLunarEclipses settings
+  solar <- map SolarEclipse <$> findSolarEclipses settings
+  return $ (lunar `par` solar `par` ()) `seq` lunar ++ solar
 
 findAllBetween ::
   (SwE.JulianDayUT1 -> IO (Either String eclipse)) ->

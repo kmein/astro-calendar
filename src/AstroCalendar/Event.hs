@@ -6,9 +6,10 @@ module AstroCalendar.Event (astrologicalEvents, AstrologicalEvents) where
 import AstroCalendar.Angle (Angle)
 import AstroCalendar.Aspect
 import AstroCalendar.Eclipse
-import AstroCalendar.Ephemeris (natalChart, parallelEphemeris)
+import AstroCalendar.Ephemeris (fullEphemeris, natalChart, parallelEphemeris)
 import AstroCalendar.Types
 import Control.Arrow (second)
+import Control.Parallel (par)
 import Data.Function (on)
 import Data.List (minimumBy)
 import Data.Map qualified as Map
@@ -95,27 +96,45 @@ retrogradeEvents planet =
       | otherwise = Nothing
     direction = signum . SwE.lngSpeed
 
-astrologicalEvents :: AspectTypeSelection -> PlanetSelection -> EventsSettings -> Map.Map SwE.Planet Ephemeris -> IO AstrologicalEvents
-astrologicalEvents aspectSelection planetSelection settings planetEphemeris = do
+astrologicalEvents :: AspectTypeSelection -> PlanetSelection -> EventsSettings -> IO AstrologicalEvents
+astrologicalEvents aspectSelection planetSelection settings = do
+  let ephemerisNeeded =
+        withAspects settings
+          || withRetrograde settings
+          || withSigns settings
+          || isJust (transitsTo settings)
+  planetEphemeris <- if ephemerisNeeded then fullEphemeris planetSelection settings else pure Map.empty
+  let retrogradePeriods
+        | withRetrograde settings = Just $ concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris
+        | otherwise = Nothing
+      signPeriods
+        | withSigns settings = Just $ concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
+        | otherwise = Nothing
+      aspectPeriods
+        | withAspects settings = Just $ aspectEvents aspectSelection planetSelection $ map (second (findAspects aspectSelection planetSelection)) $ parallelEphemeris planetEphemeris
+        | otherwise = Nothing
+      transitPeriods = \case
+        Just birthTime -> do
+          natal <- natalChart planetSelection birthTime
+          pure $
+            Just $
+              transitEvents aspectSelection planetSelection $
+                map (second (findTransits aspectSelection planetSelection natal)) $
+                  parallelEphemeris planetEphemeris
+        Nothing -> pure Nothing
   ts <- transitPeriods (transitsTo settings)
   eclipses <- if withEclipses settings then Just <$> findEclipses settings else pure Nothing
   return
-    ( if withRetrograde settings then Just retrogradePeriods else Nothing,
-      if withSigns settings then Just signPeriods else Nothing,
-      if withAspects settings then Just aspectPeriods else Nothing,
-      ts,
-      eclipses
-    )
-  where
-    retrogradePeriods = concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris
-    signPeriods = concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
-    aspectPeriods = aspectEvents aspectSelection planetSelection $ map (second (findAspects aspectSelection planetSelection)) $ parallelEphemeris planetEphemeris
-    transitPeriods = \case
-      Just birthTime -> do
-        natal <- natalChart planetSelection birthTime
-        pure $
-          Just $
-            transitEvents aspectSelection planetSelection $
-              map (second (findTransits aspectSelection planetSelection natal)) $
-                parallelEphemeris planetEphemeris
-      Nothing -> pure Nothing
+    $ ( retrogradePeriods
+          `par` signPeriods
+          `par` aspectPeriods
+          `par` eclipses
+          `par` ts
+          `par` ()
+      )
+    `seq` ( retrogradePeriods,
+            signPeriods,
+            aspectPeriods,
+            ts,
+            eclipses
+          )

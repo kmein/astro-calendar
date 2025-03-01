@@ -18,6 +18,6 @@ executable astro-calendar
     ghc-options:      -O2 -threaded -Wall
     main-is:          Main.hs
     other-modules:    AstroCalendar.ICalendar, AstroCalendar.Aspect, AstroCalendar.Ephemeris, AstroCalendar.Types, AstroCalendar.Angle, AstroCalendar.Event, AstroCalendar.Chart, AstroCalendar.Interpretation, AstroCalendar.Eclipse
-    build-depends:    base, text, bytestring, optparse-applicative, iCalendar, swiss-ephemeris, uuid, time, containers, data-default, aeson, async, http-client, http-client-tls
+    build-depends:    base, text, bytestring, optparse-applicative, iCalendar, swiss-ephemeris, uuid, time, containers, data-default, aeson, async, http-client, http-client-tls, hslogger, parallel
     default-language: Haskell2010
     default-extensions: ImportQualifiedPost, TupleSections, GeneralizedNewtypeDeriving, NamedFieldPuns

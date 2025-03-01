@@ -37,7 +37,7 @@ natalChart planetSelection utcTime = do
 
 fullEphemeris :: PlanetSelection -> EventsSettings -> IO (Map.Map SwE.Planet Ephemeris)
 fullEphemeris planetSelection settings = do
-  julianDays <- catMaybes <$> traverse SwE.toJulianDay (yearTimes settings)
+  julianDays <- catMaybes <$> mapConcurrently SwE.toJulianDay (yearTimes settings)
   timePointEphemeris <- mapConcurrently (\planet -> (planet,) <$> planetaryEphemeris planet julianDays) (allPlanets planetSelection)
   pure $ Map.fromList timePointEphemeris
 
