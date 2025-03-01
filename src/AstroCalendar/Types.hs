@@ -137,7 +137,8 @@ allTransits aspectSelection planetSelection =
   ]
 
 allAspectTypes :: AspectTypeSelection -> [AspectType]
-allAspectTypes AllAspectTypes = [Conjunction, Sextile, Square, Trine, Opposition]
+allAspectTypes AllAspectTypes = sort [Conjunction, Sextile, Square, Trine, Opposition]
+allAspectTypes HardAspectTypes = sort [Conjunction, Square, Opposition]
 allAspectTypes (CustomAspectTypes cs) = sort cs
 
 allPlanets :: PlanetSelection -> [Planet]
@@ -325,7 +326,7 @@ data Precision = Yearly | Monthly | Daily | Hourly | Minutely
 
 data PlanetSelection = TraditionalPlanets | ModernPlanets | CustomPlanets [Planet]
 
-data AspectTypeSelection = AllAspectTypes | CustomAspectTypes [AspectType]
+data AspectTypeSelection = AllAspectTypes | HardAspectTypes | CustomAspectTypes [AspectType]
 
 data Command
   = Events EventsSettings

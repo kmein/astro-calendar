@@ -41,6 +41,7 @@ sample =
             <|> pure TraditionalPlanets
         )
     <*> ( flag' AllAspectTypes (long "all-aspects" <> help "All aspects")
+            <|> flag' HardAspectTypes (long "only-hard-aspects" <> help "Only hard aspects")
             <|> option
               (CustomAspectTypes <$> parseAspectTypes)
               ( long "only-aspects"
