@@ -43,7 +43,7 @@ fullEphemeris planetSelection settings = do
 planetaryEphemeris :: SwE.Planet -> [SwE.JulianDayUT1] -> IO Ephemeris
 planetaryEphemeris planet times =
   catMaybes
-    <$> traverse
+    <$> mapConcurrently
       ( \time -> do
           utcTime <- SwE.fromJulianDay time
           position <- SwE.calculateEclipticPosition time planet
