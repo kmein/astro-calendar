@@ -27,16 +27,27 @@ sample =
     <$> ( flag' ICS (long "ical" <> help "Write iCalendar")
             <|> flag' Text (long "text" <> help "Write plain text")
             <|> flag' JSON (long "json" <> help "Write JSON")
+            <|> pure Text
         )
-    <*> ( flag' Traditional (long "traditional" <> help "Use traditional 7 planets")
-            <|> flag' Modern (long "modern" <> help "Use modern 10 planets")
+    <*> ( flag' TraditionalPlanets (long "traditional" <> help "Use traditional 7 planets")
+            <|> flag' ModernPlanets (long "modern" <> help "Use modern 10 planets")
             <|> option
-              (Custom <$> parsePlanets)
-              ( long "only"
+              (CustomPlanets <$> parsePlanets)
+              ( long "only-planets"
                   <> short 'p'
                   <> help "Select only some planets"
                   <> metavar "PLANET1,PLANET2,..."
               )
+            <|> pure TraditionalPlanets
+        )
+    <*> ( flag' AllAspectTypes (long "all-aspects" <> help "All aspects")
+            <|> option
+              (CustomAspectTypes <$> parseAspectTypes)
+              ( long "only-aspects"
+                  <> help "Select only some aspects"
+                  <> metavar "ASPECT1,ASPECT2,..."
+              )
+            <|> pure AllAspectTypes
         )
     <*> switch
       ( long "interpret"
@@ -171,6 +182,17 @@ parsePlanets = eitherReader (mapM parsePlanet . TL.splitOn "," . TL.pack)
       "pluto" -> Right SwE.Pluto
       _ -> Left "Invalid planet"
 
+parseAspectTypes :: ReadM [AspectType]
+parseAspectTypes = eitherReader (mapM parseAspectType . TL.splitOn "," . TL.pack)
+  where
+    parseAspectType = \case
+      "conjunction" -> Right Conjunction
+      "opposition" -> Right Opposition
+      "square" -> Right Square
+      "sextile" -> Right Sextile
+      "trine" -> Right Trine
+      _ -> Left "Invalid aspect"
+
 eventToString :: (IsEvent e) => EventsSettings -> e -> String
 eventToString settings event = unwords [strptime (startTime event), strptime (endTime event), TL.unpack (summary event), maybe "" TL.unpack (description event)]
   where
@@ -189,12 +211,13 @@ main = do
         (sample <**> helper)
         (fullDesc <> progDesc "Print astrological events (transits, sign entries, retrogradations)")
   let planetSelection = settingsPlanets settings
+      aspectSelection = settingsAspectTypes settings
   case astroCommand settings of
     Synastry {time1, time2} -> do
       now <- getCurrentTime
       chart1 <- natalChart planetSelection (fromMaybe now time1)
       chart2 <- natalChart planetSelection (fromMaybe now time2)
-      let aspects = findTransits planetSelection chart1 chart2
+      let aspects = findTransits aspectSelection planetSelection chart1 chart2
       case settingsFormat settings of
         JSON -> BL.putStrLn $ JSON.encode $ chartJson [chart1, chart2] aspects
         Text -> do
@@ -216,7 +239,7 @@ main = do
     Chart {time} -> do
       now <- getCurrentTime
       chart <- natalChart planetSelection (fromMaybe now time)
-      let aspects = findAspects planetSelection chart
+      let aspects = findAspects aspectSelection planetSelection chart
       case settingsFormat settings of
         JSON -> BL.putStrLn $ JSON.encode $ chartJson [chart] aspects
         Text -> do
@@ -227,7 +250,7 @@ main = do
             maybe (return ()) putStrLn delineations
         ICS -> error "ICS format is not supported for charts."
     Events eventsSettings -> do
-      events@(r, s, a, t, e) <- astrologicalEvents planetSelection eventsSettings =<< fullEphemeris planetSelection eventsSettings
+      events@(r, s, a, t, e) <- astrologicalEvents aspectSelection planetSelection eventsSettings =<< fullEphemeris planetSelection eventsSettings
       case settingsFormat settings of
         ICS -> do
           calendar <- astrologicalCalendar events

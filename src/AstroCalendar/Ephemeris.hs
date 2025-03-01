@@ -42,7 +42,7 @@ fullEphemeris planetSelection settings = do
   pure $ Map.fromList timePointEphemeris
 
 planetaryEphemeris :: SwE.Planet -> [SwE.JulianDayUT1] -> IO Ephemeris
-planetaryEphemeris planet times =
+planetaryEphemeris planet times = do
   catMaybes
     <$> mapConcurrently
       ( \time -> do

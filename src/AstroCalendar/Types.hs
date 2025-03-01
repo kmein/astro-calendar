@@ -33,6 +33,7 @@ module AstroCalendar.Types
     Accuracy (..),
     EventsSettings (..),
     PlanetSelection (..),
+    AspectTypeSelection (..),
     EclipseEvent (..),
     dateRange,
   )
@@ -118,30 +119,31 @@ instance Eq Aspect where
              || (planet1 a1 == planet2 a2 && planet2 a1 == planet1 a2)
          )
 
-allAspects :: PlanetSelection -> [Aspect]
-allAspects planetSelection =
+allAspects :: AspectTypeSelection -> PlanetSelection -> [Aspect]
+allAspects aspectSelection planetSelection =
   [ Aspect p1 t p2
     | p1 <- allPlanets planetSelection,
       p2 <- allPlanets planetSelection,
       p1 < p2,
-      t <- allAspectTypes
+      t <- allAspectTypes aspectSelection
   ]
 
-allTransits :: PlanetSelection -> [Aspect]
-allTransits planetSelection =
+allTransits :: AspectTypeSelection -> PlanetSelection -> [Aspect]
+allTransits aspectSelection planetSelection =
   [ Aspect pn t pt
     | pn <- allPlanets planetSelection,
       pt <- delete Moon (allPlanets planetSelection),
-      t <- allAspectTypes
+      t <- allAspectTypes aspectSelection
   ]
 
-allAspectTypes :: [AspectType]
-allAspectTypes = [Conjunction, Sextile, Square, Trine, Opposition]
+allAspectTypes :: AspectTypeSelection -> [AspectType]
+allAspectTypes AllAspectTypes = [Conjunction, Sextile, Square, Trine, Opposition]
+allAspectTypes (CustomAspectTypes cs) = sort cs
 
 allPlanets :: PlanetSelection -> [Planet]
-allPlanets Modern = [Sun .. Pluto]
-allPlanets Traditional = [Sun .. Saturn]
-allPlanets (Custom cs) = sort cs
+allPlanets ModernPlanets = [Sun .. Pluto]
+allPlanets TraditionalPlanets = [Sun .. Saturn]
+allPlanets (CustomPlanets cs) = sort cs
 
 type TimeSeries a = [(UTCTime, a)]
 
@@ -321,7 +323,9 @@ data Format = ICS | Text | JSON
 data Accuracy = Yearly | Monthly | Daily | Hourly | Minutely
   deriving (Show)
 
-data PlanetSelection = Traditional | Modern | Custom [Planet]
+data PlanetSelection = TraditionalPlanets | ModernPlanets | CustomPlanets [Planet]
+
+data AspectTypeSelection = AllAspectTypes | CustomAspectTypes [AspectType]
 
 data Command
   = Events EventsSettings
@@ -338,10 +342,12 @@ data EventsSettings = EventsSettings
     transitsTo :: Maybe UTCTime,
     settingsAccuracy :: Accuracy
   }
+  deriving (Show)
 
 data Settings = Settings
   { settingsFormat :: Format,
     settingsPlanets :: PlanetSelection,
+    settingsAspectTypes :: AspectTypeSelection,
     settingsInterpret :: Bool,
     astroCommand :: Command
   }
