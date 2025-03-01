@@ -30,7 +30,7 @@ module AstroCalendar.Types
     Settings (..),
     Command (..),
     Format (..),
-    Accuracy (..),
+    Precision (..),
     EventsSettings (..),
     PlanetSelection (..),
     AspectTypeSelection (..),
@@ -320,7 +320,7 @@ instance IsEvent RetrogradeEvent where
 
 data Format = ICS | Text | JSON
 
-data Accuracy = Yearly | Monthly | Daily | Hourly | Minutely
+data Precision = Yearly | Monthly | Daily | Hourly | Minutely
   deriving (Show)
 
 data PlanetSelection = TraditionalPlanets | ModernPlanets | CustomPlanets [Planet]
@@ -340,7 +340,7 @@ data EventsSettings = EventsSettings
     settingsBegin :: Maybe UTCTime,
     settingsEnd :: Maybe UTCTime,
     transitsTo :: Maybe UTCTime,
-    settingsAccuracy :: Accuracy
+    settingsPrecision :: Precision
   }
   deriving (Show)
 

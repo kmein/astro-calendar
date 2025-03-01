@@ -9,7 +9,7 @@ import SwissEphemeris qualified as SwE
 
 yearTimes :: EventsSettings -> [UTCTime]
 yearTimes settings =
-  let step = case settingsAccuracy settings of
+  let step = case settingsPrecision settings of
         Minutely -> secondsToNominalDiffTime 60
         Hourly -> secondsToNominalDiffTime $ 60 * 60
         Daily -> nominalDay

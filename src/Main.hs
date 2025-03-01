@@ -196,7 +196,7 @@ parseAspectTypes = eitherReader (mapM parseAspectType . TL.splitOn "," . TL.pack
 eventToString :: (IsEvent e) => EventsSettings -> e -> String
 eventToString settings event = unwords [strptime (startTime event), strptime (endTime event), TL.unpack (summary event), maybe "" TL.unpack (description event)]
   where
-    strptime = formatTime defaultTimeLocale $ case settingsAccuracy settings of
+    strptime = formatTime defaultTimeLocale $ case settingsPrecision settings of
       Minutely -> "%Y-%m-%d %H:%M"
       Hourly -> "%Y-%m-%d %H"
       Daily -> "%Y-%m-%d"
