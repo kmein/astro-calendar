@@ -1,2 +1,4 @@
 result
 *.ics
+.aider*
+.env
