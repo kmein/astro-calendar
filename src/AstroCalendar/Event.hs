@@ -96,8 +96,8 @@ retrogradeEvents planet =
       | otherwise = Nothing
     direction = signum . SwE.lngSpeed
 
-astrologicalEvents :: AspectTypeSelection -> PlanetSelection -> EventsSettings -> IO AstrologicalEvents
-astrologicalEvents aspectSelection planetSelection settings = do
+astrologicalEvents :: OrbSelection -> AspectTypeSelection -> PlanetSelection -> EventsSettings -> IO AstrologicalEvents
+astrologicalEvents orbSelection aspectSelection planetSelection settings = do
   let ephemerisNeeded =
         withAspects settings
           || withRetrograde settings
@@ -111,7 +111,7 @@ astrologicalEvents aspectSelection planetSelection settings = do
         | withSigns settings = Just $ concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
         | otherwise = Nothing
       aspectPeriods
-        | withAspects settings = Just $ aspectEvents aspectSelection planetSelection $ map (second (findAspects aspectSelection planetSelection)) $ parallelEphemeris planetEphemeris
+        | withAspects settings = Just $ aspectEvents aspectSelection planetSelection $ map (second (findAspects orbSelection aspectSelection planetSelection)) $ parallelEphemeris planetEphemeris
         | otherwise = Nothing
       transitPeriods = \case
         Just birthTime -> do
@@ -119,18 +119,18 @@ astrologicalEvents aspectSelection planetSelection settings = do
           pure $
             Just $
               transitEvents aspectSelection planetSelection $
-                map (second (findTransits aspectSelection planetSelection natal)) $
+                map (second (findTransits orbSelection aspectSelection planetSelection natal)) $
                   parallelEphemeris planetEphemeris
         Nothing -> pure Nothing
   ts <- transitPeriods (transitsTo settings)
   eclipses <- if withEclipses settings then Just <$> findEclipses settings else pure Nothing
   return
-    $ ( retrogradePeriods
-          `par` signPeriods
-          `par` aspectPeriods
-          `par` eclipses
-          `par` ts
-          `par` ()
+    $ ( retrogradePeriods `par`
+          signPeriods `par`
+            aspectPeriods `par`
+              eclipses `par`
+                ts `par`
+                  ()
       )
     `seq` ( retrogradePeriods,
             signPeriods,

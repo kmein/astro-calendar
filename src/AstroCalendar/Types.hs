@@ -35,6 +35,7 @@ module AstroCalendar.Types
     EventsSettings (..),
     PlanetSelection (..),
     AspectTypeSelection (..),
+    OrbSelection (..),
     EclipseEvent (..),
     dateRange,
   )
@@ -45,11 +46,10 @@ import Data.Function (on)
 import Data.List
 import Data.Map (Map)
 import Data.Maybe
-import Data.Text qualified as T (pack)
 import Data.Text.Lazy (Text, pack)
 import Data.Time.Calendar
-import Data.Time.Format
 import Data.Time.Clock
+import Data.Time.Format
 import GHC.IO (unsafePerformIO)
 import SwissEphemeris (EclipticPosition, FromJulianDay (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
 
@@ -191,9 +191,6 @@ instance IsEvent SignEvent where
   summary e = pack [symbol (planet e), ' ', maybe '?' symbol (sign e)]
   maxTime _ = Nothing
 
-symbolToJson :: (Symbol a) => a -> Value
-symbolToJson p = String (T.pack [symbol p])
-
 planetToJson :: Planet -> Value
 planetToJson = \case
   Mercury -> String "mercury"
@@ -332,7 +329,7 @@ data Format = ICS | Text | JSON
 data Precision = Yearly | Monthly | Daily | Hourly | Minutely
   deriving (Show)
 
-formatTimeWithPrecision :: FormatTime a => Precision -> a -> String
+formatTimeWithPrecision :: (FormatTime a) => Precision -> a -> String
 formatTimeWithPrecision precision = formatTime defaultTimeLocale $ case precision of
   Minutely -> "%Y-%m-%d %H:%M"
   Hourly -> "%Y-%m-%d %H"
@@ -343,6 +340,8 @@ formatTimeWithPrecision precision = formatTime defaultTimeLocale $ case precisio
 data PlanetSelection = TraditionalPlanets | ModernPlanets | CustomPlanets [Planet]
 
 data AspectTypeSelection = AllAspectTypes | HardAspectTypes | CustomAspectTypes [AspectType]
+
+data OrbSelection = ChrisBrennan | RichardTarnas | AstroDienst | LizGreene
 
 data Command
   = Events EventsSettings
@@ -365,6 +364,7 @@ data Settings = Settings
   { settingsFormat :: Format,
     settingsPlanets :: PlanetSelection,
     settingsAspectTypes :: AspectTypeSelection,
+    settingsOrbs :: OrbSelection,
     settingsInterpret :: Bool,
     astroCommand :: Command
   }

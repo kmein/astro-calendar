@@ -50,6 +50,12 @@ sample =
               )
             <|> pure AllAspectTypes
         )
+    <*> ( flag' ChrisBrennan (long "orbs-brennan" <> help "Use 3° orbs")
+            <|> flag' LizGreene (long "orbs-greene" <> help "Use orbs like Liz Greene")
+            <|> flag' AstroDienst (long "orbs-astrodienst" <> help "Use orbs like astro.com")
+            <|> flag' RichardTarnas (long "orbs-tarnas" <> help "Use 15° orbs")
+            <|> pure AstroDienst
+        )
     <*> switch
       ( long "interpret"
           <> short 'i'
@@ -214,12 +220,13 @@ main = do
         (fullDesc <> progDesc "Print astrological events (transits, sign entries, retrogradations)")
   let planetSelection = settingsPlanets settings
       aspectSelection = settingsAspectTypes settings
+      orbSelection = settingsOrbs settings
   case astroCommand settings of
     Synastry {time1, time2} -> do
       now <- getCurrentTime
       chart1 <- natalChart planetSelection (fromMaybe now time1)
       chart2 <- natalChart planetSelection (fromMaybe now time2)
-      let aspects = findTransits aspectSelection planetSelection chart1 chart2
+      let aspects = findTransits orbSelection aspectSelection planetSelection chart1 chart2
       case settingsFormat settings of
         JSON -> BL.putStrLn $ JSON.encode $ chartJson [chart1, chart2] aspects
         Text -> do
@@ -241,7 +248,7 @@ main = do
     Chart {time} -> do
       now <- getCurrentTime
       chart <- natalChart planetSelection (fromMaybe now time)
-      let aspects = findAspects aspectSelection planetSelection chart
+      let aspects = findAspects orbSelection aspectSelection planetSelection chart
       case settingsFormat settings of
         JSON -> BL.putStrLn $ JSON.encode $ chartJson [chart] aspects
         Text -> do
@@ -252,7 +259,7 @@ main = do
             maybe (return ()) putStrLn delineations
         ICS -> error "ICS format is not supported for charts."
     Events eventsSettings -> do
-      events@(r, s, a, t, e) <- astrologicalEvents aspectSelection planetSelection eventsSettings
+      events@(r, s, a, t, e) <- astrologicalEvents orbSelection aspectSelection planetSelection eventsSettings
       case settingsFormat settings of
         ICS -> do
           calendar <- astrologicalCalendar (settingsPrecision eventsSettings) events
