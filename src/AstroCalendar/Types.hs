@@ -30,6 +30,7 @@ module AstroCalendar.Types
     Settings (..),
     Command (..),
     Format (..),
+    SelectionOptions (..),
     Precision (..),
     formatTimeWithPrecision,
     EventsSettings (..),
@@ -121,32 +122,32 @@ instance Eq Aspect where
              || (planet1 a1 == planet2 a2 && planet2 a1 == planet1 a2)
          )
 
-allAspects :: AspectTypeSelection -> PlanetSelection -> [Aspect]
-allAspects aspectSelection planetSelection =
+allAspects :: SelectionOptions -> [Aspect]
+allAspects options =
   [ Aspect p1 t p2
-    | p1 <- allPlanets planetSelection,
-      p2 <- allPlanets planetSelection,
+    | p1 <- allPlanets options,
+      p2 <- allPlanets options,
       p1 < p2,
-      t <- allAspectTypes aspectSelection
+      t <- allAspectTypes options
   ]
 
-allTransits :: AspectTypeSelection -> PlanetSelection -> [Aspect]
-allTransits aspectSelection planetSelection =
+allTransits :: SelectionOptions -> [Aspect]
+allTransits options =
   [ Aspect pn t pt
-    | pn <- allPlanets planetSelection,
-      pt <- delete Moon (allPlanets planetSelection),
-      t <- allAspectTypes aspectSelection
+    | pn <- allPlanets options,
+      pt <- delete Moon (allPlanets options),
+      t <- allAspectTypes options
   ]
 
-allAspectTypes :: AspectTypeSelection -> [AspectType]
-allAspectTypes AllAspectTypes = sort [Conjunction, Sextile, Square, Trine, Opposition]
-allAspectTypes HardAspectTypes = sort [Conjunction, Square, Opposition]
-allAspectTypes (CustomAspectTypes cs) = sort cs
+allAspectTypes :: SelectionOptions -> [AspectType]
+allAspectTypes (aspectTypeSelection -> AllAspectTypes) = sort [Conjunction, Sextile, Square, Trine, Opposition]
+allAspectTypes (aspectTypeSelection -> HardAspectTypes) = sort [Conjunction, Square, Opposition]
+allAspectTypes (aspectTypeSelection -> CustomAspectTypes cs) = sort cs
 
-allPlanets :: PlanetSelection -> [Planet]
-allPlanets ModernPlanets = [Sun .. Pluto]
-allPlanets TraditionalPlanets = [Sun .. Saturn]
-allPlanets (CustomPlanets cs) = sort cs
+allPlanets :: SelectionOptions -> [Planet]
+allPlanets (planetSelection -> ModernPlanets) = [Sun .. Pluto]
+allPlanets (planetSelection -> TraditionalPlanets) = [Sun .. Saturn]
+allPlanets (planetSelection -> CustomPlanets cs) = sort cs
 
 type TimeSeries a = [(UTCTime, a)]
 
@@ -337,11 +338,21 @@ formatTimeWithPrecision precision = formatTime defaultTimeLocale $ case precisio
   Monthly -> "%Y-%m"
   Yearly -> "%Y"
 
-data PlanetSelection = TraditionalPlanets | ModernPlanets | CustomPlanets [Planet]
+data PlanetSelection
+  = TraditionalPlanets
+  | ModernPlanets
+  | CustomPlanets [Planet]
 
-data AspectTypeSelection = AllAspectTypes | HardAspectTypes | CustomAspectTypes [AspectType]
+data AspectTypeSelection
+  = AllAspectTypes
+  | HardAspectTypes
+  | CustomAspectTypes [AspectType]
 
-data OrbSelection = ChrisBrennan | RichardTarnas | AstroDienst | LizGreene
+data OrbSelection
+  = ChrisBrennan
+  | RichardTarnas
+  | AstroDienst
+  | LizGreene
 
 data Command
   = Events EventsSettings
@@ -360,11 +371,15 @@ data EventsSettings = EventsSettings
   }
   deriving (Show)
 
+data SelectionOptions = SelectionOptions
+  { planetSelection :: PlanetSelection,
+    aspectTypeSelection :: AspectTypeSelection,
+    orbSelection :: OrbSelection
+  }
+
 data Settings = Settings
   { settingsFormat :: Format,
-    settingsPlanets :: PlanetSelection,
-    settingsAspectTypes :: AspectTypeSelection,
-    settingsOrbs :: OrbSelection,
+    settingsSelectionOptions :: SelectionOptions,
     settingsInterpret :: Bool,
     astroCommand :: Command
   }

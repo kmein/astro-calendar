@@ -17,11 +17,11 @@ distanceDegrees =
     Trine -> 120
     Opposition -> 180
 
-allowedOrb :: OrbSelection -> Aspect -> Angle
-allowedOrb orbSelection aspectOrTransit =
+allowedOrb :: SelectionOptions -> Aspect -> Angle
+allowedOrb options aspectOrTransit =
   let p1 = planet1 aspectOrTransit
       p2 = planet2 aspectOrTransit
-   in case orbSelection of
+   in case orbSelection options of
         AstroDienst ->
           -- https://www.astro.com/astrology/in_aspect_e.htm
           let planets9 = [SwE.Sun, SwE.Moon, SwE.Jupiter, SwE.Saturn]
@@ -51,34 +51,34 @@ allowedOrb orbSelection aspectOrTransit =
             then 13
             else 3
 
-isAllowed :: OrbSelection -> Aspect -> Angle -> Bool
-isAllowed orbSelection aspectOrTransit distance =
-  let allowableOrb = allowedOrb orbSelection aspectOrTransit
+isAllowed :: SelectionOptions -> Aspect -> Angle -> Bool
+isAllowed options aspectOrTransit distance =
+  let allowableOrb = allowedOrb options aspectOrTransit
       aspectDegrees = distanceDegrees (aspectType aspectOrTransit)
    in abs (distance - aspectDegrees) <= allowableOrb
 
-findAspects :: OrbSelection -> AspectTypeSelection -> PlanetSelection -> Chart -> Map.Map Aspect Angle
-findAspects orbSelection aspectSelection planetSelection chart =
-  Map.fromList $ mapMaybe getOrb (allAspects aspectSelection planetSelection)
+findAspects :: SelectionOptions -> Chart -> Map.Map Aspect Angle
+findAspects options chart =
+  Map.fromList $ mapMaybe getOrb (allAspects options)
   where
     getOrb aspect@(Aspect p1 aspectType p2) =
       let l1 = Angle $ SwE.lng $ chart Map.! p1
           l2 = Angle $ SwE.lng $ chart Map.! p2
           diff = abs $ difference l1 l2
           deviation = abs $ diff - distanceDegrees aspectType
-       in if isAllowed orbSelection aspect diff
+       in if isAllowed options aspect diff
             then Just (aspect, deviation)
             else Nothing
 
-findTransits :: OrbSelection -> AspectTypeSelection -> PlanetSelection -> Chart -> Chart -> Map.Map Aspect Angle
-findTransits orbSelection aspectSelection planetSelection natal chart = Map.fromList $ mapMaybe getOrb (allTransits aspectSelection planetSelection)
+findTransits :: SelectionOptions -> Chart -> Chart -> Map.Map Aspect Angle
+findTransits options natal chart = Map.fromList $ mapMaybe getOrb (allTransits options)
   where
     getOrb aspect@(Aspect pn aspectType pt) =
       let ln = Angle $ SwE.lng $ natal Map.! pn
           lt = Angle $ SwE.lng $ chart Map.! pt
           diff = abs $ difference ln lt
           deviation = abs $ diff - distanceDegrees aspectType
-       in if isAllowed orbSelection aspect diff
+       in if isAllowed options aspect diff
             then
               Just
                 ( Aspect pn aspectType pt,

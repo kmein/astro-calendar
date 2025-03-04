@@ -29,32 +29,34 @@ sample =
             <|> flag' JSON (long "json" <> help "Write JSON")
             <|> pure Text
         )
-    <*> ( flag' TraditionalPlanets (long "traditional" <> help "Use traditional 7 planets")
-            <|> flag' ModernPlanets (long "modern" <> help "Use modern 10 planets")
-            <|> option
-              (CustomPlanets <$> parsePlanets)
-              ( long "only-planets"
-                  <> short 'p'
-                  <> help "Select only some planets"
-                  <> metavar "PLANET1,PLANET2,..."
-              )
-            <|> pure ModernPlanets
-        )
-    <*> ( flag' AllAspectTypes (long "all-aspects" <> help "All aspects")
-            <|> flag' HardAspectTypes (long "only-hard-aspects" <> help "Only hard aspects")
-            <|> option
-              (CustomAspectTypes <$> parseAspectTypes)
-              ( long "only-aspects"
-                  <> help "Select only some aspects"
-                  <> metavar "ASPECT1,ASPECT2,..."
-              )
-            <|> pure AllAspectTypes
-        )
-    <*> ( flag' ChrisBrennan (long "orbs-brennan" <> help "Use 3° orbs")
-            <|> flag' LizGreene (long "orbs-greene" <> help "Use orbs like Liz Greene")
-            <|> flag' AstroDienst (long "orbs-astrodienst" <> help "Use orbs like astro.com")
-            <|> flag' RichardTarnas (long "orbs-tarnas" <> help "Use 15° orbs")
-            <|> pure AstroDienst
+    <*> ( SelectionOptions
+            <$> ( flag' TraditionalPlanets (long "traditional" <> help "Use traditional 7 planets")
+                    <|> flag' ModernPlanets (long "modern" <> help "Use modern 10 planets")
+                    <|> option
+                      (CustomPlanets <$> parsePlanets)
+                      ( long "only-planets"
+                          <> short 'p'
+                          <> help "Select only some planets"
+                          <> metavar "PLANET1,PLANET2,..."
+                      )
+                    <|> pure ModernPlanets
+                )
+            <*> ( flag' AllAspectTypes (long "all-aspects" <> help "All aspects")
+                    <|> flag' HardAspectTypes (long "only-hard-aspects" <> help "Only hard aspects")
+                    <|> option
+                      (CustomAspectTypes <$> parseAspectTypes)
+                      ( long "only-aspects"
+                          <> help "Select only some aspects"
+                          <> metavar "ASPECT1,ASPECT2,..."
+                      )
+                    <|> pure AllAspectTypes
+                )
+            <*> ( flag' ChrisBrennan (long "orbs-brennan" <> help "Use 3° orbs")
+                    <|> flag' LizGreene (long "orbs-greene" <> help "Use orbs like Liz Greene")
+                    <|> flag' AstroDienst (long "orbs-astrodienst" <> help "Use orbs like astro.com")
+                    <|> flag' RichardTarnas (long "orbs-tarnas" <> help "Use 15° orbs")
+                    <|> pure AstroDienst
+                )
         )
     <*> switch
       ( long "interpret"
@@ -218,15 +220,13 @@ main = do
       info
         (sample <**> helper)
         (fullDesc <> progDesc "Print astrological events (transits, sign entries, retrogradations)")
-  let planetSelection = settingsPlanets settings
-      aspectSelection = settingsAspectTypes settings
-      orbSelection = settingsOrbs settings
+  let options = settingsSelectionOptions settings
   case astroCommand settings of
     Synastry {time1, time2} -> do
       now <- getCurrentTime
-      chart1 <- natalChart planetSelection (fromMaybe now time1)
-      chart2 <- natalChart planetSelection (fromMaybe now time2)
-      let aspects = findTransits orbSelection aspectSelection planetSelection chart1 chart2
+      chart1 <- natalChart options (fromMaybe now time1)
+      chart2 <- natalChart options (fromMaybe now time2)
+      let aspects = findTransits options chart1 chart2
       case settingsFormat settings of
         JSON -> BL.putStrLn $ JSON.encode $ chartJson [chart1, chart2] aspects
         Text -> do
@@ -247,8 +247,8 @@ main = do
         ICS -> error "ICS format is not supported for synastry."
     Chart {time} -> do
       now <- getCurrentTime
-      chart <- natalChart planetSelection (fromMaybe now time)
-      let aspects = findAspects orbSelection aspectSelection planetSelection chart
+      chart <- natalChart options (fromMaybe now time)
+      let aspects = findAspects options chart
       case settingsFormat settings of
         JSON -> BL.putStrLn $ JSON.encode $ chartJson [chart] aspects
         Text -> do
@@ -259,7 +259,7 @@ main = do
             maybe (return ()) putStrLn delineations
         ICS -> error "ICS format is not supported for charts."
     Events eventsSettings -> do
-      events@(r, s, a, t, e) <- astrologicalEvents orbSelection aspectSelection planetSelection eventsSettings
+      events@(r, s, a, t, e) <- astrologicalEvents options eventsSettings
       case settingsFormat settings of
         ICS -> do
           calendar <- astrologicalCalendar (settingsPrecision eventsSettings) events

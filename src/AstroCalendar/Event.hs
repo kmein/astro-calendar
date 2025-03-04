@@ -35,9 +35,9 @@ signEvent planet =
     signFromPosition :: SwE.EclipticPosition -> Maybe SwE.ZodiacSignName
     signFromPosition = SwE.longitudeZodiacSign . SwE.splitDegreesZodiac . SwE.getEclipticLongitude
 
-aspectEvents :: AspectTypeSelection -> PlanetSelection -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent NatalAspect]
-aspectEvents aspectSelection planetSelection aspects =
-  concatMap findOccurrences (allAspects aspectSelection planetSelection)
+aspectEvents :: SelectionOptions -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent NatalAspect]
+aspectEvents options aspects =
+  concatMap findOccurrences (allAspects options)
   where
     findOccurrences :: Aspect -> [AspectEvent NatalAspect]
     findOccurrences aspect = mapMaybe period $ chunkTimeSeries (Map.member aspect) aspects
@@ -56,9 +56,9 @@ aspectEvents aspectSelection planetSelection aspects =
                   }
           | otherwise = Nothing
 
-transitEvents :: AspectTypeSelection -> PlanetSelection -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent TransitAspect]
-transitEvents aspectSelection planetSelection transits =
-  concatMap findOccurrences (allTransits aspectSelection planetSelection)
+transitEvents :: SelectionOptions -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent TransitAspect]
+transitEvents options transits =
+  concatMap findOccurrences (allTransits options)
   where
     findOccurrences :: Aspect -> [AspectEvent TransitAspect]
     findOccurrences transit = mapMaybe period $ chunkTimeSeries (Map.member transit) transits
@@ -96,14 +96,14 @@ retrogradeEvents planet =
       | otherwise = Nothing
     direction = signum . SwE.lngSpeed
 
-astrologicalEvents :: OrbSelection -> AspectTypeSelection -> PlanetSelection -> EventsSettings -> IO AstrologicalEvents
-astrologicalEvents orbSelection aspectSelection planetSelection settings = do
+astrologicalEvents :: SelectionOptions -> EventsSettings -> IO AstrologicalEvents
+astrologicalEvents options settings = do
   let ephemerisNeeded =
         withAspects settings
           || withRetrograde settings
           || withSigns settings
           || isJust (transitsTo settings)
-  planetEphemeris <- if ephemerisNeeded then fullEphemeris planetSelection settings else pure Map.empty
+  planetEphemeris <- if ephemerisNeeded then fullEphemeris options settings else pure Map.empty
   let retrogradePeriods
         | withRetrograde settings = Just $ concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris
         | otherwise = Nothing
@@ -111,15 +111,15 @@ astrologicalEvents orbSelection aspectSelection planetSelection settings = do
         | withSigns settings = Just $ concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
         | otherwise = Nothing
       aspectPeriods
-        | withAspects settings = Just $ aspectEvents aspectSelection planetSelection $ map (second (findAspects orbSelection aspectSelection planetSelection)) $ parallelEphemeris planetEphemeris
+        | withAspects settings = Just $ aspectEvents options $ map (second (findAspects options)) $ parallelEphemeris planetEphemeris
         | otherwise = Nothing
       transitPeriods = \case
         Just birthTime -> do
-          natal <- natalChart planetSelection birthTime
+          natal <- natalChart options birthTime
           pure $
             Just $
-              transitEvents aspectSelection planetSelection $
-                map (second (findTransits orbSelection aspectSelection planetSelection natal)) $
+              transitEvents options $
+                map (second (findTransits options natal)) $
                   parallelEphemeris planetEphemeris
         Nothing -> pure Nothing
   ts <- transitPeriods (transitsTo settings)
