@@ -67,7 +67,6 @@
               ];
               shellHook = ''
                 export SE_EPHE_PATH=${swisseph.outPath}/ephe
-                export GHCRTS=-N
               '';
             }
           );
