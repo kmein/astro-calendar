@@ -70,11 +70,11 @@ sample =
               ( Chart
                   <$> optional
                     ( option
-                        parseUTCTime
+                        (parseUTCTime <|> parseDate)
                         ( long "date"
                             <> short 'd'
                             <> help "Date to chart (default: now)"
-                            <> metavar "YYYY-MM-DD HH:MM"
+                            <> metavar "YYYY-MM-DD (HH:MM)"
                         )
                     )
               )
@@ -86,20 +86,20 @@ sample =
                 ( Synastry
                     <$> optional
                       ( option
-                          parseUTCTime
+                          (parseUTCTime <|> parseDate)
                           ( long "left"
                               <> short 'l'
                               <> help "First date to chart"
-                              <> metavar "YYYY-MM-DD HH:MM"
+                              <> metavar "YYYY-MM-DD (HH:MM)"
                           )
                       )
                     <*> optional
                       ( option
-                          parseUTCTime
+                          (parseUTCTime <|> parseDate)
                           ( long "right"
                               <> short 'r'
                               <> help "Second date to chart"
-                              <> metavar "YYYY-MM-DD HH:MM"
+                              <> metavar "YYYY-MM-DD (HH:MM)"
                           )
                       )
                 )
@@ -131,29 +131,29 @@ sample =
                               )
                             <*> optional
                               ( option
-                                  parseUTCTime
+                                  (parseUTCTime <|> parseDate)
                                   ( long "begin"
                                       <> short 'b'
                                       <> help "Start date"
-                                      <> metavar "YYYY-MM-DD HH:MM"
+                                      <> metavar "YYYY-MM-DD (HH:MM)"
                                   )
                               )
                             <*> optional
                               ( option
-                                  parseUTCTime
+                                  (parseUTCTime <|> parseDate)
                                   ( long "end"
                                       <> short 'e'
                                       <> help "End date"
-                                      <> metavar "YYYY-MM-DD HH:MM"
+                                      <> metavar "YYYY-MM-DD (HH:MM)"
                                   )
                               )
                             <*> optional
                               ( option
-                                  parseUTCTime
+                                  (parseUTCTime <|> parseDate)
                                   ( long "transits"
                                       <> short 't'
                                       <> help "Birth date to calculate transits"
-                                      <> metavar "YYYY-MM-DD HH:MM"
+                                      <> metavar "YYYY-MM-DD (HH:MM)"
                                   )
                               )
                             <*> ( flag' Daily (long "daily" <> help "Check every day (default)")
@@ -174,6 +174,12 @@ parseUTCTime = eitherReader $ \input ->
   case parseTimeM True defaultTimeLocale "%Y-%m-%d %H:%M" input of
     Just time -> Right time
     Nothing -> Left "Invalid time format. Expected format: YYYY-MM-DD HH:MM"
+
+parseDate :: ReadM UTCTime
+parseDate = eitherReader $ \input ->
+  case parseTimeM True defaultTimeLocale "%Y-%m-%d" input of
+    Just time -> Right time
+    Nothing -> Left "Invalid time format. Expected format: YYYY-MM-DD (HH:MM)"
 
 parsePlanets :: ReadM [SwE.Planet]
 parsePlanets = eitherReader (mapM parsePlanet . TL.splitOn "," . TL.pack)
