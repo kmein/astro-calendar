@@ -38,6 +38,7 @@ module AstroCalendar.Types
     AspectTypeSelection (..),
     OrbSelection (..),
     EclipseEvent (..),
+    retrograde,
     dateRange,
   )
 where

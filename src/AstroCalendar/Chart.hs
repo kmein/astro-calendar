@@ -27,7 +27,16 @@ aspectString aspect (degreesMinutes -> (degree, minute)) =
 positionString :: Planet -> [SwE.EclipticPosition] -> String
 positionString planet positions =
   [symbol planet, '\t']
-    ++ intercalate "\t" (map (showLongitudeComponents . SwE.splitDegreesZodiac . SwE.getEclipticLongitude) positions)
+    ++ intercalate
+      "\t"
+      ( map
+          ( \x ->
+              showLongitudeComponents
+                (SwE.splitDegreesZodiac (SwE.getEclipticLongitude x))
+                ++ if SwE.lngSpeed x < 0 then [' ', retrograde] else []
+          )
+          positions
+      )
 
 chartString :: [Chart] -> Map.Map Aspect Angle -> String
 chartString charts aspects =
