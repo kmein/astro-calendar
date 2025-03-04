@@ -24,36 +24,36 @@ import Text.ICalendar.Printer
 sample :: Parser Settings
 sample =
   Settings
-    <$> ( flag' ICS (long "ical" <> help "Write iCalendar")
-            <|> flag' Text (long "text" <> help "Write plain text")
-            <|> flag' JSON (long "json" <> help "Write JSON")
+    <$> ( flag' ICS (long "ical" <> help "Output iCalendar")
+            <|> flag' Text (long "text" <> help "Output plain text")
+            <|> flag' JSON (long "json" <> help "Output JSON")
             <|> pure Text
         )
     <*> ( SelectionOptions
             <$> ( flag' TraditionalPlanets (long "traditional" <> help "Use traditional 7 planets")
-                    <|> flag' ModernPlanets (long "modern" <> help "Use modern 10 planets")
+                    <|> flag' ModernPlanets (long "modern" <> help "Use modern 10 planets (default)")
                     <|> option
                       (CustomPlanets <$> parsePlanets)
                       ( long "only-planets"
                           <> short 'p'
-                          <> help "Select only some planets"
+                          <> help "Select only the specified planets"
                           <> metavar "PLANET1,PLANET2,..."
                       )
                     <|> pure ModernPlanets
                 )
-            <*> ( flag' AllAspectTypes (long "all-aspects" <> help "All aspects")
-                    <|> flag' HardAspectTypes (long "only-hard-aspects" <> help "Only hard aspects")
+            <*> ( flag' AllAspectTypes (long "all-aspects" <> help "Use all aspects (default)")
+                    <|> flag' HardAspectTypes (long "only-hard-aspects" <> help "Use only hard aspects")
                     <|> option
                       (CustomAspectTypes <$> parseAspectTypes)
                       ( long "only-aspects"
-                          <> help "Select only some aspects"
+                          <> help "Use only the specified aspects"
                           <> metavar "ASPECT1,ASPECT2,..."
                       )
                     <|> pure AllAspectTypes
                 )
             <*> ( flag' ChrisBrennan (long "orbs-brennan" <> help "Use 3° orbs")
                     <|> flag' LizGreene (long "orbs-greene" <> help "Use orbs like Liz Greene")
-                    <|> flag' AstroDienst (long "orbs-astrodienst" <> help "Use orbs like astro.com")
+                    <|> flag' AstroDienst (long "orbs-astrodienst" <> help "Use orbs like astro.com (default)")
                     <|> flag' RichardTarnas (long "orbs-tarnas" <> help "Use 15° orbs")
                     <|> pure AstroDienst
                 )
@@ -61,7 +61,7 @@ sample =
     <*> switch
       ( long "interpret"
           <> short 'i'
-          <> help "Whether to offer delineations on the chart"
+          <> help "Offer GPT-generated delineations on the chart"
       )
     <*> subparser
       ( command
@@ -73,12 +73,12 @@ sample =
                         parseUTCTime
                         ( long "date"
                             <> short 'd'
-                            <> help "Date to chart"
+                            <> help "Date to chart (default: now)"
                             <> metavar "YYYY-MM-DD HH:MM"
                         )
                     )
               )
-              (progDesc "Show chart and aspects")
+              (progDesc "Show chart for a date and aspects")
           )
           <> command
             "synastry"
@@ -156,16 +156,16 @@ sample =
                                       <> metavar "YYYY-MM-DD HH:MM"
                                   )
                               )
-                            <*> ( flag' Daily (long "daily" <> help "Check for every day")
-                                    <|> flag' Hourly (long "hourly" <> help "Check for every hour")
-                                    <|> flag' Monthly (long "monthly" <> help "Check for every month")
-                                    <|> flag' Minutely (long "minutely" <> help "Check for every minute")
-                                    <|> flag' Yearly (long "yearly" <> help "Check for every year")
+                            <*> ( flag' Daily (long "daily" <> help "Check every day (default)")
+                                    <|> flag' Hourly (long "hourly" <> help "Check every hour")
+                                    <|> flag' Monthly (long "monthly" <> help "Check every month")
+                                    <|> flag' Minutely (long "minutely" <> help "Check every minute")
+                                    <|> flag' Yearly (long "yearly" <> help "Check every year")
                                     <|> pure Daily
                                 )
                         )
                 )
-                (progDesc "Show events")
+                (progDesc "Show astrological alignments over time")
             )
       )
 
@@ -219,7 +219,7 @@ main = do
     execParser $
       info
         (sample <**> helper)
-        (fullDesc <> progDesc "Print astrological events (transits, sign entries, retrogradations)")
+        (fullDesc <> progDesc "Command-line astrology toolkit")
   let options = settingsSelectionOptions settings
   case astroCommand settings of
     Synastry {time1, time2} -> do
