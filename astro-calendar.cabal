@@ -29,22 +29,22 @@ executable astro-calendar
     AstroCalendar.Types
 
   build-depends:
-    , aeson
-    , async
-    , base
-    , bytestring
-    , containers
-    , data-default
-    , hslogger
-    , http-client
-    , http-client-tls
-    , iCalendar
-    , optparse-applicative
-    , parallel
-    , swiss-ephemeris
-    , text
-    , time
-    , uuid
+    , aeson                 >=2     && <3
+    , async                 >=2     && <3
+    , base                  >=4     && <5
+    , bytestring            >=0.11  && <1
+    , containers            >=0.6   && <1
+    , data-default          >=0.7   && <1
+    , hslogger              >=1     && <2
+    , http-client           >=0.7   && <1
+    , http-client-tls       >=0.3   && <1
+    , iCalendar             >=0.4   && <1
+    , optparse-applicative  >=0.18  && <1
+    , parallel              >=3     && <4
+    , swiss-ephemeris       >=1.4   && <2
+    , text                  >=2     && <3
+    , time                  >=1.12  && <2
+    , uuid                  >=1.3.0 && <2
 
   default-language:   Haskell2010
   default-extensions:
