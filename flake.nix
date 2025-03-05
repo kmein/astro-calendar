@@ -57,7 +57,7 @@
                 pkgs.cabal-install
                 pkgs.haskellPackages.haskell-language-server
                 pkgs.cabal2nix
-                pkgs.haskellPackages.ormolu
+                pkgs.haskellPackages.cabal-fmt
                 (pkgs.python3.withPackages (py: [
                   py.pandas
                   py.matplotlib
