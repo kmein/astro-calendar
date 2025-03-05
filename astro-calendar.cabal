@@ -5,7 +5,7 @@ license:            AGPL-3.0-or-later
 license-file:       LICENSE
 author:             Kierán Meinhardt
 maintainer:         kmein@posteo.de
-category:           ?
+category:           Astrology
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
 
