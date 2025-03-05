@@ -7,7 +7,6 @@ author:          Kierán Meinhardt
 maintainer:      kmein@posteo.de
 category:        Astrology
 build-type:      Simple
-extra-doc-files: CHANGELOG.md
 
 common warnings
   ghc-options: -Wall
