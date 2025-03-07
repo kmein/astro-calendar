@@ -3,6 +3,7 @@
 
 import AstroCalendar.Aspect
 import AstroCalendar.Chart
+import AstroCalendar.Commonalities
 import AstroCalendar.Ephemeris
 import AstroCalendar.Event
 import AstroCalendar.ICalendar
@@ -69,38 +70,31 @@ sample =
           ( info
               ( Chart
                   <$> optional
-                    ( option
-                        (parseUTCTime <|> parseDate)
-                        ( long "date"
-                            <> short 'd'
-                            <> help "Date to chart (default: now)"
-                            <> metavar "YYYY-MM-DD (HH:MM)"
-                        )
+                    ( argument (parseUTCTime <|> parseDate)
+                        (help "Date to chart (default: now)" <> metavar "YYYY-MM-DD (HH:MM)")
                     )
               )
               (progDesc "Show chart for a date and aspects")
           )
           <> command
+            "commonalities"
+            ( info
+                ( Commonalities
+                    <$> some (argument (parseUTCTime <|> parseDate) (metavar "YYYY-MM-DD (HH:MM)"))
+                )
+                $ progDesc "Analyse astrological commonalities of multiple dates"
+            )
+          <> command
             "synastry"
             ( info
                 ( Synastry
                     <$> optional
-                      ( option
-                          (parseUTCTime <|> parseDate)
-                          ( long "left"
-                              <> short 'l'
-                              <> help "First date to chart"
-                              <> metavar "YYYY-MM-DD (HH:MM)"
-                          )
+                      ( argument (parseUTCTime <|> parseDate)
+                          (help "First date to chart" <> metavar "YYYY-MM-DD (HH:MM)")
                       )
                     <*> optional
-                      ( option
-                          (parseUTCTime <|> parseDate)
-                          ( long "right"
-                              <> short 'r'
-                              <> help "Second date to chart"
-                              <> metavar "YYYY-MM-DD (HH:MM)"
-                          )
+                      ( argument (parseUTCTime <|> parseDate)
+                          (help "Second date to chart" <> metavar "YYYY-MM-DD (HH:MM)")
                       )
                 )
                 (progDesc "Show two chart and the aspects between them")
@@ -228,6 +222,18 @@ main = do
         (fullDesc <> progDesc "Command-line astrology toolkit")
   let options = settingsSelectionOptions settings
   case astroCommand settings of
+    Commonalities times -> do
+      charts <- mapM (natalChart options) times
+      let commonalities = chartCommonalities options charts
+      case settingsFormat settings of
+        JSON -> BL.putStrLn $ JSON.encode $ commonalitiesJson commonalities
+        Text -> do
+          putStrLn $ commonalitiesString commonalities
+          when (settingsInterpret settings) $ do
+            let c = BL.unpack $ JSON.encode $ commonalitiesJson commonalities
+            delineations <- sendRequest $ "The following astrological alignments are common to several world events. Please explain the archetypes that unite them in one paragraph each (one for placements, one for retrogrades, and one for aspects).\n\n" ++ c
+            maybe (return ()) putStrLn delineations
+        ICS -> error "ICS format is not supported for commonalities."
     Synastry {time1, time2} -> do
       now <- getCurrentTime
       chart1 <- natalChart options (fromMaybe now time1)

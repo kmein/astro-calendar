@@ -12,6 +12,7 @@ module AstroCalendar.Types
     Ephemeris,
     Aspect (..),
     TimeSeries,
+    aspectString,
     allAspects,
     allAspectTypes,
     allPlanets,
@@ -116,12 +117,29 @@ data Aspect = Aspect
   }
   deriving (Ord, Show)
 
+aspectString :: Aspect -> String
+aspectString aspect =
+  [ symbol (planet1 aspect),
+    ' ',
+    symbol (aspectType aspect),
+    ' ',
+    symbol (planet2 aspect)
+  ]
+
 instance Eq Aspect where
   a1 == a2 =
     aspectType a1 == aspectType a2
       && ( (planet1 a1 == planet1 a2 && planet2 a1 == planet2 a2)
              || (planet1 a1 == planet2 a2 && planet2 a1 == planet1 a2)
          )
+
+instance ToJSON Aspect where
+  toJSON a =
+    object
+      [ ("planet1", planetToJson (planet1 a)),
+        ("planet2", planetToJson (planet2 a)),
+        ("type", toJSON (aspectType a))
+      ]
 
 allAspects :: SelectionOptions -> [Aspect]
 allAspects options =
@@ -359,6 +377,7 @@ data Command
   = Events EventsSettings
   | Chart {time :: Maybe UTCTime}
   | Synastry {time1 :: Maybe UTCTime, time2 :: Maybe UTCTime}
+  | Commonalities {times :: [UTCTime]}
 
 data EventsSettings = EventsSettings
   { withRetrograde :: Bool,

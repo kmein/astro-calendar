@@ -44,7 +44,13 @@ allowedOrb options aspectOrTransit =
           if aspectType aspectOrTransit `elem` [Conjunction, Opposition, Square, Trine]
             then 10
             else 6
-        RichardTarnas -> 15
+        RichardTarnas ->
+          case aspectType aspectOrTransit of
+            Opposition -> 15
+            Conjunction -> 15
+            Square -> 10
+            Trine -> 10 -- ?
+            Sextile -> 10 -- ?
         ChrisBrennan ->
           -- https://theastrologypodcast.com/transcripts/ep-323-transcript-aspects-in-astrology-the-five-major-configurations/
           if p1 == SwE.Moon || p2 == SwE.Moon

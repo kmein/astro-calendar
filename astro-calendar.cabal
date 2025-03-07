@@ -26,6 +26,7 @@ executable astro-calendar
     AstroCalendar.ICalendar
     AstroCalendar.Interpretation
     AstroCalendar.Types
+    AstroCalendar.Commonalities
 
   build-depends:
     , aeson                 >=2     && <3

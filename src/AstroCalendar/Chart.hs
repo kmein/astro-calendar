@@ -10,14 +10,9 @@ import Data.List (foldl', intercalate, sortOn)
 import Data.Map qualified as Map
 import SwissEphemeris as SwE
 
-aspectString :: Aspect -> Angle -> String
-aspectString aspect (degreesMinutes -> (degree, minute)) =
-  [ symbol (planet1 aspect),
-    ' ',
-    symbol (aspectType aspect),
-    ' ',
-    symbol (planet2 aspect)
-  ]
+aspectOrbString :: Aspect -> Angle -> String
+aspectOrbString aspect (degreesMinutes -> (degree, minute)) =
+  aspectString aspect
     ++ "\t"
     ++ show degree
     ++ "° "
@@ -44,7 +39,7 @@ chartString charts aspects =
     concat
       [ map (uncurry positionString) $ combineMaps charts,
         [[]],
-        map (uncurry aspectString) (sortOn (abs . snd) $ Map.toList aspects)
+        map (uncurry aspectOrbString) (sortOn (abs . snd) $ Map.toList aspects)
       ]
 
 combineMaps :: (Ord k) => [Map.Map k v] -> [(k, [v])]

@@ -63,7 +63,7 @@ Example: Elon Musk's birth chart, born June 28, 1971, at 07:30 AM SAST in Pretor
 
 ### Perform a Synastry Chart Analysis
 ```console
-$ astro-calendar synastry --left "$(date -u +"%Y-%m-%d %H:%M" -d "28 June 1971 07:30 SAST")" --right "$(date -u +"%Y-%m-%d %H:%M" -d "17 March 1988 23:30 PST")"
+$ astro-calendar synastry "$(date -u +"%Y-%m-%d %H:%M" -d "28 June 1971 07:30 SAST")" "$(date -u +"%Y-%m-%d %H:%M" -d "17 March 1988 23:30 PST")"
 ☉	♋ 5° 53ʹ	♓ 27° 55ʹ
 ☽	♍ 8° 14ʹ	♈ 1° 5ʹ
 ☿	♋ 14° 4ʹ	♓ 2° 29ʹ
@@ -602,7 +602,7 @@ $ astro-calendar chart --date "$(date -u +"%Y-%m-%d %H:%M" -d "28 June 1971 07:3
 }
 
 # Generate a synastry chart between Elon Musk and Grimes (born March 17, 1988, at 11:30 PM PST in Vancouver, British Columbia, Canada) with AI interpretation
-$ OPENAI_API_KEY=$(pass api-keys/openai.com) astro-calendar synastry --left "$(date -u +"%Y-%m-%d %H:%M" -d "28 June 1971 07:30 SAST")" --right "$(date -u +"%Y-%m-%d %H:%M" -d "17 March 1988 23:30 PST")" --interpret
+$ OPENAI_API_KEY=$(pass api-keys/openai.com) astro-calendar synastry "$(date -u +"%Y-%m-%d %H:%M" -d "28 June 1971 07:30 SAST")" "$(date -u +"%Y-%m-%d %H:%M" -d "17 March 1988 23:30 PST")" --interpret
 ...
 
 Chart 1 features a Cancer Sun and Virgo Moon, indicating a nurturing and
