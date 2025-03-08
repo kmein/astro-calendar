@@ -19,16 +19,16 @@ aspectOrbString aspect (degreesMinutes -> (degree, minute)) =
     ++ show minute
     ++ "ʹ"
 
-positionString :: Planet -> [SwE.EclipticPosition] -> String
+positionString :: (Symbol a) => a -> [SwE.EclipticPosition] -> String
 positionString planet positions =
-  [symbol planet, '\t']
+  (symbol planet ++ "\t")
     ++ intercalate
       "\t"
       ( map
           ( \x ->
               showLongitudeComponents
                 (SwE.splitDegreesZodiac (SwE.getEclipticLongitude x))
-                ++ if SwE.lngSpeed x < 0 then [' ', retrograde] else []
+                ++ if SwE.lngSpeed x < 0 then " " ++ retrograde else []
           )
           positions
       )
@@ -56,11 +56,11 @@ aspectJson aspect orb =
       "orb" .= orb
     ]
 
-positionJson :: Planet -> EclipticPosition -> Value
+positionJson :: PlanetOrMidpoint -> EclipticPosition -> Value
 positionJson planet position =
   object
     [ "sign" .= fmap zodiacSignToJson (SwE.longitudeZodiacSign longitude),
-      "planet" .= planetToJson planet,
+      "planet" .= toJSON planet,
       "degrees" .= SwE.longitudeDegrees longitude,
       "minutes" .= SwE.longitudeMinutes longitude,
       "retrograde" .= (SwE.lngSpeed position < 0)
@@ -80,5 +80,5 @@ showLongitudeComponents longitude
   | Just sign <- longitudeZodiacSign longitude,
     degrees <- longitudeDegrees longitude,
     minutes <- longitudeMinutes longitude =
-      [symbol sign] ++ " " ++ show degrees ++ "° " ++ show minutes ++ "ʹ"
+      symbol sign ++ " " ++ show degrees ++ "° " ++ show minutes ++ "ʹ"
   | otherwise = "?"

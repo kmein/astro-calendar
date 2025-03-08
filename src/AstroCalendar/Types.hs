@@ -16,6 +16,7 @@ module AstroCalendar.Types
     allAspects,
     allAspectTypes,
     allPlanets,
+    allPlanetsOrMidpoints,
     allTransits,
     chunkTimeSeries,
     timeSeriesTimes,
@@ -32,6 +33,7 @@ module AstroCalendar.Types
     Command (..),
     Format (..),
     SelectionOptions (..),
+    PlanetOrMidpoint (..),
     Precision (..),
     formatTimeWithPrecision,
     EventsSettings (..),
@@ -56,16 +58,37 @@ import Data.Time.Format
 import GHC.IO (unsafePerformIO)
 import SwissEphemeris (EclipticPosition, FromJulianDay (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
 
+data PlanetOrMidpoint = Single Planet | Midpoint Planet Planet
+  deriving (Ord, Show)
+
+instance ToJSON PlanetOrMidpoint where
+  toJSON (Single p) = planetToJson p
+  toJSON (Midpoint a b) =
+    object
+      [ ("type", "midpoint"),
+        ("planet1", planetToJson a),
+        ("planet2", planetToJson b)
+      ]
+
+instance Symbol PlanetOrMidpoint where
+  symbol (Single p) = symbol p
+  symbol (Midpoint a b) = symbol (min a b) ++ "/" ++ symbol (max a b)
+
+instance Eq PlanetOrMidpoint where
+  Single p == Single q = p == q
+  Midpoint a b == Midpoint x y = (x == a && b == y) || (x == b && y == a)
+  _ == _ = False
+
 class Symbol a where
-  symbol :: a -> Char
+  symbol :: a -> String
 
 instance Symbol AspectType where
   symbol = \case
-    Conjunction -> '☌'
-    Sextile -> '⚹'
-    Square -> '□'
-    Trine -> '△'
-    Opposition -> '☍'
+    Conjunction -> "☌"
+    Sextile -> "⚹"
+    Square -> "□"
+    Trine -> "△"
+    Opposition -> "☍"
 
 instance ToJSON AspectType where
   toJSON =
@@ -78,37 +101,37 @@ instance ToJSON AspectType where
 
 instance Symbol ZodiacSignName where
   symbol = \case
-    Aries -> '♈'
-    Taurus -> '♉'
-    Gemini -> '♊'
-    Cancer -> '♋'
-    Leo -> '♌'
-    Virgo -> '♍'
-    Libra -> '♎'
-    Scorpio -> '♏'
-    Sagittarius -> '♐'
-    Capricorn -> '♑'
-    Aquarius -> '♒'
-    Pisces -> '♓'
+    Aries -> "♈"
+    Taurus -> "♉"
+    Gemini -> "♊"
+    Cancer -> "♋"
+    Leo -> "♌"
+    Virgo -> "♍"
+    Libra -> "♎"
+    Scorpio -> "♏"
+    Sagittarius -> "♐"
+    Capricorn -> "♑"
+    Aquarius -> "♒"
+    Pisces -> "♓"
 
 instance Symbol Planet where
   symbol = \case
-    Mercury -> '☿'
-    Venus -> '♀'
-    Mars -> '♂'
-    Jupiter -> '♃'
-    Saturn -> '♄'
-    Uranus -> '♅'
-    Neptune -> '♆'
-    Pluto -> '♇'
-    Moon -> '☽'
-    Sun -> '☉'
-    _ -> '\xfffd' -- replacement character
+    Mercury -> "☿"
+    Venus -> "♀"
+    Mars -> "♂"
+    Jupiter -> "♃"
+    Saturn -> "♄"
+    Uranus -> "♅"
+    Neptune -> "♆"
+    Pluto -> "♇"
+    Moon -> "☽"
+    Sun -> "☉"
+    _ -> "\xfffd" -- replacement character
 
-eclipse, occultation, retrograde :: Char
-eclipse = '🝶'
-occultation = '🝵'
-retrograde = '℞'
+eclipse, occultation, retrograde :: String
+eclipse = "🝶"
+occultation = "🝵"
+retrograde = "℞"
 
 data Aspect = Aspect
   { planet1 :: Planet,
@@ -119,12 +142,11 @@ data Aspect = Aspect
 
 aspectString :: Aspect -> String
 aspectString aspect =
-  [ symbol (planet1 aspect),
-    ' ',
-    symbol (aspectType aspect),
-    ' ',
-    symbol (planet2 aspect)
-  ]
+  unwords
+    [ symbol (planet1 aspect),
+      symbol (aspectType aspect),
+      symbol (planet2 aspect)
+    ]
 
 instance Eq Aspect where
   a1 == a2 =
@@ -168,6 +190,13 @@ allPlanets (planetSelection -> ModernPlanets) = [Sun .. Pluto]
 allPlanets (planetSelection -> TraditionalPlanets) = [Sun .. Saturn]
 allPlanets (planetSelection -> CustomPlanets cs) = sort cs
 
+allPlanetsOrMidpoints :: SelectionOptions -> [PlanetOrMidpoint]
+allPlanetsOrMidpoints options
+  | midpoints options =
+      map Single (allPlanets options)
+        ++ [Midpoint a b | a <- allPlanets options, b <- allPlanets options, a < b]
+  | otherwise = map Single (allPlanets options)
+
 type TimeSeries a = [(UTCTime, a)]
 
 chunkTimeSeries :: (Eq b) => (a -> b) -> TimeSeries a -> [TimeSeries a]
@@ -184,7 +213,7 @@ getValue = snd
 
 type Ephemeris = TimeSeries EclipticPosition
 
-type Chart = Map Planet EclipticPosition
+type Chart = Map PlanetOrMidpoint EclipticPosition
 
 data AspectKind = NatalAspect | TransitAspect
   deriving (Eq, Ord, Show)
@@ -208,7 +237,7 @@ data SignEvent = SignEvent
 instance IsEvent SignEvent where
   startTime = signStartTime
   endTime = signEndTime
-  summary e = pack [symbol (planet e), ' ', maybe '?' symbol (sign e)]
+  summary e = pack $ unwords [symbol (planet e), maybe "?" symbol (sign e)]
   maxTime _ = Nothing
 
 planetToJson :: Planet -> Value
@@ -259,13 +288,13 @@ data AspectEvent (k :: AspectKind) = AspectEvent
 instance IsEvent (AspectEvent NatalAspect) where
   startTime = aspectStartTime
   endTime = aspectEndTime
-  summary (aspect -> a) = pack [symbol (planet1 a), ' ', symbol (aspectType a), ' ', symbol (planet2 a)]
+  summary (aspect -> a) = pack $ unwords [symbol (planet1 a), symbol (aspectType a), symbol (planet2 a)]
   maxTime = Just . aspectExactTime
 
 instance IsEvent (AspectEvent TransitAspect) where
   startTime = aspectStartTime
   endTime = aspectEndTime
-  summary (aspect -> a) = pack [symbol (planet2 a), ' ', symbol (aspectType a)] <> " natal " <> pack [symbol (planet1 a)]
+  summary (aspect -> a) = pack (unwords [symbol (planet2 a), symbol (aspectType a)]) <> " natal " <> pack (symbol (planet1 a))
   maxTime = Just . aspectExactTime
 
 instance ToJSON (AspectEvent NatalAspect) where
@@ -304,8 +333,8 @@ instance IsEvent EclipseEvent where
       SolarEclipse e -> solarEclipseEnd e
       LunarEclipse e -> lunarEclipsePartialPhaseEnd e
   summary = \case
-    SolarEclipse e -> pack $ [occultation, ' ', symbol Sun, ' '] ++ show (solarEclipseType e)
-    LunarEclipse e -> pack $ [eclipse, ' ', symbol Moon, ' '] ++ show (lunarEclipseType e)
+    SolarEclipse e -> pack $ unwords [occultation, symbol Sun, show (solarEclipseType e)]
+    LunarEclipse e -> pack $ unwords [eclipse, symbol Moon, show (lunarEclipseType e)]
   maxTime =
     Just . unsafeJulianToUTC . \case
       LunarEclipse e -> lunarEclipseMax e
@@ -341,7 +370,7 @@ instance ToJSON RetrogradeEvent where
 instance IsEvent RetrogradeEvent where
   startTime = retrogradeStartTime
   endTime = retrogradeEndTime
-  summary e = pack [symbol (retrogradePlanet e), ' ', retrograde]
+  summary e = pack $ unwords [symbol (retrogradePlanet e), retrograde]
   maxTime _ = Nothing
 
 data Format = ICS | Text | JSON
@@ -394,7 +423,8 @@ data EventsSettings = EventsSettings
 data SelectionOptions = SelectionOptions
   { planetSelection :: PlanetSelection,
     aspectTypeSelection :: AspectTypeSelection,
-    orbSelection :: OrbSelection
+    orbSelection :: OrbSelection,
+    midpoints :: Bool
   }
 
 data Settings = Settings

@@ -58,6 +58,7 @@ sample =
                     <|> flag' RichardTarnas (long "orbs-tarnas" <> help "Use 15° orbs")
                     <|> pure AstroDienst
                 )
+            <*> flag False True (long "midpoints" <> help "Calculate planetary midpoints")
         )
     <*> switch
       ( long "interpret"
@@ -70,7 +71,8 @@ sample =
           ( info
               ( Chart
                   <$> optional
-                    ( argument (parseUTCTime <|> parseDate)
+                    ( argument
+                        (parseUTCTime <|> parseDate)
                         (help "Date to chart (default: now)" <> metavar "YYYY-MM-DD (HH:MM)")
                     )
               )
@@ -89,11 +91,13 @@ sample =
             ( info
                 ( Synastry
                     <$> optional
-                      ( argument (parseUTCTime <|> parseDate)
+                      ( argument
+                          (parseUTCTime <|> parseDate)
                           (help "First date to chart" <> metavar "YYYY-MM-DD (HH:MM)")
                       )
                     <*> optional
-                      ( argument (parseUTCTime <|> parseDate)
+                      ( argument
+                          (parseUTCTime <|> parseDate)
                           (help "Second date to chart" <> metavar "YYYY-MM-DD (HH:MM)")
                       )
                 )

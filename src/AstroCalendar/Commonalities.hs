@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module AstroCalendar.Commonalities (commonalitiesJson, chartCommonalities, commonalitiesString) where
@@ -7,11 +8,11 @@ import AstroCalendar.Types
 import Data.Aeson
 import Data.List (intersect)
 import Data.Map qualified as Map
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, mapMaybe)
 import Data.Set qualified as Set
 import SwissEphemeris qualified as SwE
 
-type ChartCommonalities = (Map.Map SwE.Planet SwE.ZodiacSignName, Set.Set SwE.Planet, Set.Set Aspect)
+type ChartCommonalities = (Map.Map PlanetOrMidpoint SwE.ZodiacSignName, Set.Set SwE.Planet, Set.Set Aspect)
 
 commonalitiesJson :: ChartCommonalities -> Value
 commonalitiesJson (placements, retrogrades, aspects) =
@@ -21,7 +22,7 @@ commonalitiesJson (placements, retrogrades, aspects) =
           $ map
             ( \(planet, sign) ->
                 object
-                  [ ("planet", planetToJson planet),
+                  [ ("planet", toJSON planet),
                     ("sign", zodiacSignToJson sign)
                   ]
             )
@@ -35,8 +36,8 @@ commonalitiesString :: ChartCommonalities -> String
 commonalitiesString (placements, retrogrades, aspects) =
   unlines $
     concat
-      [ map (\(planet, sign) -> [symbol planet, ' ', symbol sign]) $ Map.toList placements,
-        map (\planet -> [symbol planet, ' ', retrograde]) $ Set.toList retrogrades,
+      [ map (\(planet, sign) -> unwords [symbol planet, symbol sign]) $ Map.toList placements,
+        map (\planet -> unwords [symbol planet, retrograde]) $ Set.toList retrogrades,
         map aspectString $ Set.toList aspects
       ]
 
@@ -61,8 +62,11 @@ chartCommonalities options charts = (commonPlacements, commonRetrogrades, common
                 )
           )
         $ charts
+    fromSingle = \case
+      (Single p) -> Just p
+      _ -> Nothing
     commonRetrogrades =
       Set.fromList
         . foldl1 intersect
-        . map (Map.keys . Map.filter (< 0) . fmap (signum . SwE.lngSpeed))
+        . map (mapMaybe fromSingle . Map.keys . Map.filter (< 0) . fmap (signum . SwE.lngSpeed))
         $ charts
