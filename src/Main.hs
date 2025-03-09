@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 import AstroCalendar.Aspect
 import AstroCalendar.Chart
@@ -7,9 +8,11 @@ import AstroCalendar.Commonalities
 import AstroCalendar.Ephemeris
 import AstroCalendar.Event
 import AstroCalendar.ICalendar
+import AstroCalendar.Angle
 import AstroCalendar.Interpretation
 import AstroCalendar.Types
 import Control.Monad
+import Data.Map qualified as Map
 import Data.Aeson qualified as JSON
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Default
@@ -19,6 +22,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Time.Clock
 import Data.Time.Format
 import Options.Applicative
+import Safe
 import SwissEphemeris qualified as SwE
 import Text.ICalendar.Printer
 
@@ -59,6 +63,7 @@ sample =
                     <|> pure AstroDienst
                 )
             <*> flag False True (long "midpoints" <> help "Calculate planetary midpoints")
+            <*> optional (option parseGeographicPosition (long "at" <> help "Calculate houses for certain location"))
         )
     <*> switch
       ( long "interpret"
@@ -179,6 +184,15 @@ parseDate = eitherReader $ \input ->
     Just time -> Right time
     Nothing -> Left "Invalid time format. Expected format: YYYY-MM-DD (HH:MM)"
 
+parseGeographicPosition :: ReadM SwE.GeographicPosition
+parseGeographicPosition = eitherReader $ \input ->
+  case span (/= ',') input of
+    (latString, ',' : lonString)
+      | Just lat <- readMay @Double latString,
+        Just lon <- readMay @Double lonString ->
+          Right $ SwE.GeographicPosition lat lon
+    _ -> Left "Invalid position format: Expected format: LAT,LON"
+
 parsePlanets :: ReadM [SwE.Planet]
 parsePlanets = eitherReader (mapM parsePlanet . TL.splitOn "," . TL.pack)
   where
@@ -263,12 +277,25 @@ main = do
         ICS -> error "ICS format is not supported for synastry."
     Chart {time} -> do
       now <- getCurrentTime
-      chart <- natalChart options (fromMaybe now time)
+      let time' = fromMaybe now time
+      chart <- natalChart options time'
       let aspects = findAspects options chart
       case settingsFormat settings of
         JSON -> BL.putStrLn $ JSON.encode $ chartJson [chart] aspects
         Text -> do
           putStrLn $ chartString [chart] aspects
+          case position options of
+            Just gp -> do
+              Just julianDay <- SwE.toJulianDay time'
+              cusps <- SwE.calculateCusps SwE.Placidus julianDay gp
+              let ac = SwE.ascendant $ SwE.angles cusps
+                  mc = SwE.mc $ SwE.angles cusps
+              putStrLn $ "AC\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac ac)
+              putStrLn $ "MC\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac mc)
+              forM_ (Map.toList chart) $ \(planet, position) -> do
+                putStrLn $ "AC/" ++ symbol planet ++ "\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac $ degrees $ midpoint (Angle ac) $ Angle $ SwE.lng position)
+                putStrLn $ "MC/" ++ symbol planet ++ "\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac $ degrees $ midpoint (Angle mc) $ Angle $ SwE.lng position)
+            Nothing -> pure ()
           when (settingsInterpret settings) $ do
             let c = BL.unpack $ JSON.encode $ chartJson [chart] aspects
             delineations <- sendRequest $ "Please concisely interpret the following birth chart in two paragraphs (one for the placements, one for the aspects):\n\n" ++ c

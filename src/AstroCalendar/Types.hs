@@ -56,7 +56,7 @@ import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.Format
 import GHC.IO (unsafePerformIO)
-import SwissEphemeris (EclipticPosition, FromJulianDay (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
+import SwissEphemeris (EclipticPosition, FromJulianDay (..), GeographicPosition (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
 
 data PlanetOrMidpoint = Single Planet | Midpoint Planet Planet
   deriving (Ord, Show)
@@ -424,7 +424,8 @@ data SelectionOptions = SelectionOptions
   { planetSelection :: PlanetSelection,
     aspectTypeSelection :: AspectTypeSelection,
     orbSelection :: OrbSelection,
-    midpoints :: Bool
+    midpoints :: Bool,
+    position :: Maybe GeographicPosition
   }
 
 data Settings = Settings

@@ -2,9 +2,9 @@
 
 module AstroCalendar.Ephemeris (fullEphemeris, parallelEphemeris, natalChart) where
 
+import AstroCalendar.Angle
 import AstroCalendar.Types
 import Control.Concurrent.Async
-import Data.Fixed (mod') -- To keep angles in the [0,360) range
 import Data.Map qualified as Map
 import Data.Maybe
 import Data.Time.Clock (UTCTime (..), addUTCTime, nominalDay, secondsToNominalDiffTime)
@@ -50,34 +50,11 @@ eclipticPosition time = \case
   Midpoint p q -> do
     ep <- SwE.calculateEclipticPosition time p
     eq <- SwE.calculateEclipticPosition time q
-    pure $ midpoint <$> ep <*> eq
-
-midpoint :: SwE.EclipticPosition -> SwE.EclipticPosition -> SwE.EclipticPosition
-midpoint a b =
-  let -- Convert longitude to radians
-      degToRad x = x * pi / 180
-      radToDeg x = x * 180 / pi
-
-      -- Convert longitudes to Cartesian coordinates
-      x1 = cos (degToRad (SwE.lng a))
-      y1 = sin (degToRad (SwE.lng a))
-      x2 = cos (degToRad (SwE.lng b))
-      y2 = sin (degToRad (SwE.lng b))
-
-      -- Average Cartesian coordinates
-      xMid = (x1 + x2) / 2
-      yMid = (y1 + y2) / 2
-
-      -- Convert back to longitude (handling quadrant issues)
-      midLng = mod' (radToDeg (atan2 yMid xMid)) 360
-   in SwE.EclipticPosition
-        { SwE.lng = midLng,
-          SwE.lat = (SwE.lat a + SwE.lat b) / 2,
-          SwE.distance = (SwE.distance a + SwE.distance b) / 2,
-          SwE.lngSpeed = (SwE.lngSpeed a + SwE.lngSpeed b) / 2,
-          SwE.latSpeed = (SwE.latSpeed a + SwE.latSpeed b) / 2,
-          SwE.distSpeed = (SwE.distSpeed a + SwE.distSpeed b) / 2
-        }
+    pure $ do
+      ep' <- ep
+      eq' <- eq
+      -- hacky
+      pure ep' {SwE.lng = degrees $ midpoint (Angle $ SwE.lng ep') (Angle $ SwE.lng eq')}
 
 planetaryEphemeris :: PlanetOrMidpoint -> [SwE.JulianDayUT1] -> IO Ephemeris
 planetaryEphemeris planet times = do

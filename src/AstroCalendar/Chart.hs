@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module AstroCalendar.Chart (chartJson, chartString) where
+module AstroCalendar.Chart (chartJson, chartString, showLongitudeComponents) where
 
 import AstroCalendar.Angle
 import AstroCalendar.Types
