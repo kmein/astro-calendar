@@ -103,11 +103,7 @@ astrologicalEvents options settings = do
           || withRetrograde settings
           || withSigns settings
           || isJust (transitsTo settings)
-  planetOrMidpointEphemeris <- if ephemerisNeeded then fullEphemeris options settings else pure Map.empty
-  let getSingle = \case
-        Single p -> p
-        Midpoint p _ -> p
-      planetEphemeris = Map.mapKeys getSingle planetOrMidpointEphemeris
+  planetEphemeris <- if ephemerisNeeded then fullEphemeris options settings else pure Map.empty
   let retrogradePeriods
         | withRetrograde settings = Just $ concat $ Map.elems $ Map.mapWithKey retrogradeEvents planetEphemeris
         | otherwise = Nothing

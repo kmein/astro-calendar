@@ -56,11 +56,11 @@ aspectJson aspect orb =
       "orb" .= orb
     ]
 
-positionJson :: PlanetOrMidpoint -> EclipticPosition -> Value
+positionJson :: SwE.Planet -> EclipticPosition -> Value
 positionJson planet position =
   object
     [ "sign" .= fmap zodiacSignToJson (SwE.longitudeZodiacSign longitude),
-      "planet" .= toJSON planet,
+      "planet" .= planetToJson planet,
       "degrees" .= SwE.longitudeDegrees longitude,
       "minutes" .= SwE.longitudeMinutes longitude,
       "retrograde" .= (SwE.lngSpeed position < 0)

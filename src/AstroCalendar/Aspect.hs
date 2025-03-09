@@ -68,8 +68,8 @@ findAspects options chart =
   Map.fromList $ mapMaybe getOrb (allAspects options)
   where
     getOrb aspect@(Aspect p1 aspectType p2) =
-      let l1 = Angle $ SwE.lng $ chart Map.! Single p1
-          l2 = Angle $ SwE.lng $ chart Map.! Single p2
+      let l1 = Angle $ SwE.lng $ chart Map.! p1
+          l2 = Angle $ SwE.lng $ chart Map.! p2
           diff = abs $ difference l1 l2
           deviation = abs $ diff - distanceDegrees aspectType
        in if isAllowed options aspect diff
@@ -80,8 +80,8 @@ findTransits :: SelectionOptions -> Chart -> Chart -> Map.Map Aspect Angle
 findTransits options natal chart = Map.fromList $ mapMaybe getOrb (allTransits options)
   where
     getOrb aspect@(Aspect pn aspectType pt) =
-      let ln = Angle $ SwE.lng $ natal Map.! Single pn
-          lt = Angle $ SwE.lng $ chart Map.! Single pt
+      let ln = Angle $ SwE.lng $ natal Map.! pn
+          lt = Angle $ SwE.lng $ chart Map.! pt
           diff = abs $ difference ln lt
           deviation = abs $ diff - distanceDegrees aspectType
        in if isAllowed options aspect diff

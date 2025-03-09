@@ -16,7 +16,6 @@ module AstroCalendar.Types
     allAspects,
     allAspectTypes,
     allPlanets,
-    allPlanetsOrMidpoints,
     allTransits,
     chunkTimeSeries,
     timeSeriesTimes,
@@ -33,7 +32,6 @@ module AstroCalendar.Types
     Command (..),
     Format (..),
     SelectionOptions (..),
-    PlanetOrMidpoint (..),
     Precision (..),
     formatTimeWithPrecision,
     EventsSettings (..),
@@ -57,27 +55,6 @@ import Data.Time.Clock
 import Data.Time.Format
 import GHC.IO (unsafePerformIO)
 import SwissEphemeris (EclipticPosition, FromJulianDay (..), GeographicPosition (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
-
-data PlanetOrMidpoint = Single Planet | Midpoint Planet Planet
-  deriving (Ord, Show)
-
-instance ToJSON PlanetOrMidpoint where
-  toJSON (Single p) = planetToJson p
-  toJSON (Midpoint a b) =
-    object
-      [ ("type", "midpoint"),
-        ("planet1", planetToJson a),
-        ("planet2", planetToJson b)
-      ]
-
-instance Symbol PlanetOrMidpoint where
-  symbol (Single p) = symbol p
-  symbol (Midpoint a b) = symbol (min a b) ++ "/" ++ symbol (max a b)
-
-instance Eq PlanetOrMidpoint where
-  Single p == Single q = p == q
-  Midpoint a b == Midpoint x y = (x == a && b == y) || (x == b && y == a)
-  _ == _ = False
 
 class Symbol a where
   symbol :: a -> String
@@ -190,13 +167,6 @@ allPlanets (planetSelection -> ModernPlanets) = [Sun .. Pluto]
 allPlanets (planetSelection -> TraditionalPlanets) = [Sun .. Saturn]
 allPlanets (planetSelection -> CustomPlanets cs) = sort cs
 
-allPlanetsOrMidpoints :: SelectionOptions -> [PlanetOrMidpoint]
-allPlanetsOrMidpoints options
-  | midpoints options =
-      map Single (allPlanets options)
-        ++ [Midpoint a b | a <- allPlanets options, b <- allPlanets options, a < b]
-  | otherwise = map Single (allPlanets options)
-
 type TimeSeries a = [(UTCTime, a)]
 
 chunkTimeSeries :: (Eq b) => (a -> b) -> TimeSeries a -> [TimeSeries a]
@@ -213,7 +183,7 @@ getValue = snd
 
 type Ephemeris = TimeSeries EclipticPosition
 
-type Chart = Map PlanetOrMidpoint EclipticPosition
+type Chart = Map Planet EclipticPosition
 
 data AspectKind = NatalAspect | TransitAspect
   deriving (Eq, Ord, Show)

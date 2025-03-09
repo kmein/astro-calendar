@@ -2,21 +2,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
+import AstroCalendar.Angle
 import AstroCalendar.Aspect
 import AstroCalendar.Chart
 import AstroCalendar.Commonalities
 import AstroCalendar.Ephemeris
 import AstroCalendar.Event
 import AstroCalendar.ICalendar
-import AstroCalendar.Angle
 import AstroCalendar.Interpretation
 import AstroCalendar.Types
 import Control.Monad
-import Data.Map qualified as Map
 import Data.Aeson qualified as JSON
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Default
 import Data.List (sort)
+import Data.Map qualified as Map
 import Data.Maybe
 import Data.Text.Lazy qualified as TL
 import Data.Time.Clock
@@ -284,6 +284,15 @@ main = do
         JSON -> BL.putStrLn $ JSON.encode $ chartJson [chart] aspects
         Text -> do
           putStrLn $ chartString [chart] aspects
+          when (midpoints options) $ do
+            mapM_ putStrLn $ do
+              (p1, a1) <- Map.toList chart
+              (p2, a2) <- Map.toList chart
+              guard $ p1 `elem` [SwE.Sun, SwE.Moon]
+              guard $ p1 < p2
+              let label = symbol p1 ++ "/" ++ symbol p2
+                  midpointPosition = SwE.splitDegreesZodiac $ degrees $ Angle (SwE.lng a1) `midpoint` Angle (SwE.lng a2)
+              pure $ label ++ "\t" ++ showLongitudeComponents midpointPosition
           case position options of
             Just gp -> do
               Just julianDay <- SwE.toJulianDay time'
@@ -292,9 +301,11 @@ main = do
                   mc = SwE.mc $ SwE.angles cusps
               putStrLn $ "AC\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac ac)
               putStrLn $ "MC\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac mc)
-              forM_ (Map.toList chart) $ \(planet, position) -> do
-                putStrLn $ "AC/" ++ symbol planet ++ "\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac $ degrees $ midpoint (Angle ac) $ Angle $ SwE.lng position)
-                putStrLn $ "MC/" ++ symbol planet ++ "\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac $ degrees $ midpoint (Angle mc) $ Angle $ SwE.lng position)
+              mapM_ putStrLn $ do
+                (p, a) <- Map.toList chart
+                (angleName, angle) <- [("AC", ac), ("MC", mc)]
+                let midpointPosition = SwE.splitDegreesZodiac $ degrees $ Angle angle `midpoint` Angle (SwE.lng a)
+                pure $ symbol p ++ "/" ++ angleName ++ "\t" ++ showLongitudeComponents midpointPosition
             Nothing -> pure ()
           when (settingsInterpret settings) $ do
             let c = BL.unpack $ JSON.encode $ chartJson [chart] aspects

@@ -30,39 +30,27 @@ natalChart options utcTime = do
         . catMaybes
         <$> traverse
           ( \planet -> do
-              position <- eclipticPosition time planet
+              position <- SwE.calculateEclipticPosition time planet
               pure $ fmap (planet,) (eitherToMaybe position)
           )
-          (allPlanetsOrMidpoints options)
+          (allPlanets options)
     _ -> error $ "Could not convert to julian day: " ++ show utcTime
   where
     eitherToMaybe = either (const Nothing) Just
 
-fullEphemeris :: SelectionOptions -> EventsSettings -> IO (Map.Map PlanetOrMidpoint Ephemeris)
+fullEphemeris :: SelectionOptions -> EventsSettings -> IO (Map.Map SwE.Planet Ephemeris)
 fullEphemeris options settings = do
   julianDays <- catMaybes <$> mapConcurrently SwE.toJulianDay (yearTimes settings)
-  timePointEphemeris <- mapConcurrently (\planet -> (planet,) <$> planetaryEphemeris planet julianDays) (allPlanetsOrMidpoints options)
+  timePointEphemeris <- mapConcurrently (\planet -> (planet,) <$> planetaryEphemeris planet julianDays) (allPlanets options)
   pure $ Map.fromList timePointEphemeris
 
-eclipticPosition :: SwE.JulianDayUT1 -> PlanetOrMidpoint -> IO (Either String SwE.EclipticPosition)
-eclipticPosition time = \case
-  Single p -> SwE.calculateEclipticPosition time p
-  Midpoint p q -> do
-    ep <- SwE.calculateEclipticPosition time p
-    eq <- SwE.calculateEclipticPosition time q
-    pure $ do
-      ep' <- ep
-      eq' <- eq
-      -- hacky
-      pure ep' {SwE.lng = degrees $ midpoint (Angle $ SwE.lng ep') (Angle $ SwE.lng eq')}
-
-planetaryEphemeris :: PlanetOrMidpoint -> [SwE.JulianDayUT1] -> IO Ephemeris
+planetaryEphemeris :: SwE.Planet -> [SwE.JulianDayUT1] -> IO Ephemeris
 planetaryEphemeris planet times = do
   catMaybes
     <$> mapConcurrently
       ( \time -> do
           utcTime <- SwE.fromJulianDay time
-          position <- eclipticPosition time planet
+          position <- SwE.calculateEclipticPosition time planet
           pure $ fmap (utcTime,) (eitherToMaybe position)
       )
       times
@@ -76,7 +64,7 @@ parallelEphemeris = Map.toList . Map.foldrWithKey insertToMap Map.empty
     insertToMap planet ephemeris acc =
       foldr
         ( \(time, position) innerAcc ->
-            Map.insertWith Map.union time (Map.singleton (Single planet) position) innerAcc
+            Map.insertWith Map.union time (Map.singleton planet position) innerAcc
         )
         acc
         ephemeris
