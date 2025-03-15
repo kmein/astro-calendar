@@ -1,10 +1,9 @@
-{-# LANGUAGE LambdaCase #-}
-
 module AstroCalendar.Ephemeris (fullEphemeris, parallelEphemeris, natalChart) where
 
 import AstroCalendar.Types
 import Control.Concurrent.Async
 import Control.Monad (guard)
+import Data.Fixed (mod')
 import Data.Map qualified as Map
 import Data.Maybe
 import Data.Time.Clock (UTCTime (..), addUTCTime, nominalDay, secondsToNominalDiffTime)
@@ -25,7 +24,7 @@ yearTimes settings =
 midpoint :: SwE.EclipticPosition -> SwE.EclipticPosition -> SwE.EclipticPosition
 midpoint pos1 pos2 =
   SwE.EclipticPosition
-    { SwE.lng = avg (SwE.lng pos1) (SwE.lng pos2),
+    { SwE.lng = midpointLongitude (SwE.lng pos1) (SwE.lng pos2),
       SwE.lat = avg (SwE.lat pos1) (SwE.lat pos2),
       SwE.distance = avg (SwE.distance pos1) (SwE.distance pos2),
       SwE.lngSpeed = avg (SwE.lngSpeed pos1) (SwE.lngSpeed pos2),
@@ -34,6 +33,10 @@ midpoint pos1 pos2 =
     }
   where
     avg a b = (a + b) / 2
+    midpointLongitude lng1 lng2
+      | abs (lng1 - lng2) <= 180 = avg lng1 lng2
+      | lng1 < lng2 = avg (lng1 + 360) lng2 `mod'` 360
+      | otherwise = avg lng1 (lng2 + 360) `mod'` 360
 
 -- | Convert a longitude value into an EclipticPosition with default values
 longitudeToEclipticPosition :: Double -> SwE.EclipticPosition
