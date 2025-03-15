@@ -11,7 +11,7 @@ import Data.Maybe (fromJust)
 import Data.Set qualified as Set
 import SwissEphemeris qualified as SwE
 
-type ChartCommonalities = (Map.Map SwE.Planet SwE.ZodiacSignName, Set.Set SwE.Planet, Set.Set Aspect)
+type ChartCommonalities = (Map.Map Point SwE.ZodiacSignName, Set.Set Point, Set.Set Aspect)
 
 commonalitiesJson :: ChartCommonalities -> Value
 commonalitiesJson (placements, retrogrades, aspects) =
@@ -19,16 +19,16 @@ commonalitiesJson (placements, retrogrades, aspects) =
     [ ( "placements",
         toJSON
           $ map
-            ( \(planet, sign) ->
+            ( \(point, sign) ->
                 object
-                  [ ("planet", planetToJson planet),
+                  [ ("point", toJSON point),
                     ("sign", zodiacSignToJson sign)
                   ]
             )
           $ Map.toList placements
       ),
       ("aspects", toJSON aspects),
-      ("retrogrades", toJSON (Set.map planetToJson retrogrades))
+      ("retrogrades", toJSON (Set.map toJSON retrogrades))
     ]
 
 commonalitiesString :: ChartCommonalities -> String

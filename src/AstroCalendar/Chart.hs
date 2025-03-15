@@ -50,17 +50,16 @@ combineMaps = Map.toList . foldl' insertIntoMap Map.empty
 aspectJson :: Aspect -> Angle -> Value
 aspectJson aspect orb =
   object
-    [ "planet1" .= planetToJson (planet1 aspect),
-      "planet2" .= planetToJson (planet2 aspect),
+    [ "points" .= [point1 aspect, point2 aspect],
       "type" .= aspectType aspect,
       "orb" .= orb
     ]
 
-positionJson :: SwE.Planet -> EclipticPosition -> Value
+positionJson :: Point -> EclipticPosition -> Value
 positionJson planet position =
   object
     [ "sign" .= fmap zodiacSignToJson (SwE.longitudeZodiacSign longitude),
-      "planet" .= planetToJson planet,
+      "planet" .= planet,
       "degrees" .= SwE.longitudeDegrees longitude,
       "minutes" .= SwE.longitudeMinutes longitude,
       "retrograde" .= (SwE.lngSpeed position < 0)

@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-import AstroCalendar.Angle
 import AstroCalendar.Aspect
 import AstroCalendar.Chart
 import AstroCalendar.Commonalities
@@ -16,7 +15,6 @@ import Data.Aeson qualified as JSON
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Default
 import Data.List (sort)
-import Data.Map qualified as Map
 import Data.Maybe
 import Data.Text.Lazy qualified as TL
 import Data.Time.Clock
@@ -37,6 +35,7 @@ sample =
     <*> ( SelectionOptions
             <$> ( flag' TraditionalPlanets (long "traditional" <> help "Use traditional 7 planets")
                     <|> flag' ModernPlanets (long "modern" <> help "Use modern 10 planets (default)")
+                    <|> flag' EbertinPlanets (long "ebertin-planets" <> help "Use Ebertin planets (including midpoints)")
                     <|> option
                       (CustomPlanets <$> parsePlanets)
                       ( long "only-planets"
@@ -48,6 +47,7 @@ sample =
                 )
             <*> ( flag' AllAspectTypes (long "all-aspects" <> help "Use all aspects (default)")
                     <|> flag' HardAspectTypes (long "only-hard-aspects" <> help "Use only hard aspects")
+                    <|> flag' EbertinAspectTypes (long "ebertin-aspects" <> help "Use only Ebertin aspects")
                     <|> option
                       (CustomAspectTypes <$> parseAspectTypes)
                       ( long "only-aspects"
@@ -56,13 +56,13 @@ sample =
                       )
                     <|> pure AllAspectTypes
                 )
-            <*> ( flag' ChrisBrennan (long "orbs-brennan" <> help "Use 3° orbs")
-                    <|> flag' LizGreene (long "orbs-greene" <> help "Use orbs like Liz Greene")
-                    <|> flag' AstroDienst (long "orbs-astrodienst" <> help "Use orbs like astro.com (default)")
-                    <|> flag' RichardTarnas (long "orbs-tarnas" <> help "Use 15° orbs")
+            <*> ( flag' ChrisBrennan (long "brennan-orbs" <> help "Use 3° orbs")
+                    <|> flag' LizGreene (long "greene-orbs" <> help "Use orbs like Liz Greene")
+                    <|> flag' AstroDienst (long "astrodienst-orbs" <> help "Use orbs like astro.com (default)")
+                    <|> flag' RichardTarnas (long "tarnas-orbs" <> help "Use 15° orbs")
+                    <|> flag' ReinholdEbertin (long "ebertin-orbs" <> help "Use orbs like Reinhold Ebertin")
                     <|> pure AstroDienst
                 )
-            <*> flag False True (long "midpoints" <> help "Calculate planetary midpoints")
             <*> optional (option parseGeographicPosition (long "at" <> help "Calculate houses for certain location"))
         )
     <*> switch
@@ -284,29 +284,6 @@ main = do
         JSON -> BL.putStrLn $ JSON.encode $ chartJson [chart] aspects
         Text -> do
           putStrLn $ chartString [chart] aspects
-          when (midpoints options) $ do
-            mapM_ putStrLn $ do
-              (p1, a1) <- Map.toList chart
-              (p2, a2) <- Map.toList chart
-              guard $ p1 `elem` [SwE.Sun, SwE.Moon]
-              guard $ p1 < p2
-              let label = symbol p1 ++ "/" ++ symbol p2
-                  midpointPosition = SwE.splitDegreesZodiac $ degrees $ Angle (SwE.lng a1) `midpoint` Angle (SwE.lng a2)
-              pure $ label ++ "\t" ++ showLongitudeComponents midpointPosition
-          case position options of
-            Just gp -> do
-              Just julianDay <- SwE.toJulianDay time'
-              cusps <- SwE.calculateCusps SwE.Placidus julianDay gp
-              let ac = SwE.ascendant $ SwE.angles cusps
-                  mc = SwE.mc $ SwE.angles cusps
-              putStrLn $ "AC\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac ac)
-              putStrLn $ "MC\t" ++ showLongitudeComponents (SwE.splitDegreesZodiac mc)
-              mapM_ putStrLn $ do
-                (p, a) <- Map.toList chart
-                (angleName, angle) <- [("AC", ac), ("MC", mc)]
-                let midpointPosition = SwE.splitDegreesZodiac $ degrees $ Angle angle `midpoint` Angle (SwE.lng a)
-                pure $ symbol p ++ "/" ++ angleName ++ "\t" ++ showLongitudeComponents midpointPosition
-            Nothing -> pure ()
           when (settingsInterpret settings) $ do
             let c = BL.unpack $ JSON.encode $ chartJson [chart] aspects
             delineations <- sendRequest $ "Please concisely interpret the following birth chart in two paragraphs (one for the placements, one for the aspects):\n\n" ++ c

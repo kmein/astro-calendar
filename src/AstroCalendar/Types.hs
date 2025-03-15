@@ -9,6 +9,7 @@ module AstroCalendar.Types
   ( AspectType (..),
     AspectKind (..),
     Chart,
+    AnglePoint(..),
     Ephemeris,
     Aspect (..),
     TimeSeries,
@@ -29,6 +30,7 @@ module AstroCalendar.Types
     RetrogradeEvent (..),
     IsEvent (..),
     Settings (..),
+    Point (..),
     Command (..),
     Format (..),
     SelectionOptions (..),
@@ -56,14 +58,47 @@ import Data.Time.Format
 import GHC.IO (unsafePerformIO)
 import SwissEphemeris (EclipticPosition, FromJulianDay (..), GeographicPosition (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
 
+data Point
+  = Planet Planet
+  | AnglePoint AnglePoint
+  | Midpoint Point Point
+  deriving (Show, Ord, Eq)
+
+data AnglePoint = Ascendant | MediumCaeli
+  deriving (Show, Ord, Eq)
+
+instance ToJSON AnglePoint where
+  toJSON = \case
+    Ascendant -> "ascendant"
+    MediumCaeli -> "medium-caeli"
+
+instance Symbol AnglePoint where
+  symbol = \case
+    Ascendant -> "A"
+    MediumCaeli -> "M"
+
+instance ToJSON Point where
+  toJSON = \case
+    Planet p -> planetToJson p
+    AnglePoint a -> toJSON a
+    Midpoint a b -> object ["midpoint" .= [toJSON a, toJSON b]]
+
+instance Symbol Point where
+  symbol = \case
+    Planet p -> symbol p
+    AnglePoint a -> symbol a
+    Midpoint x y -> symbol x ++ "/" ++ symbol y
+
 class Symbol a where
   symbol :: a -> String
 
 instance Symbol AspectType where
   symbol = \case
     Conjunction -> "☌"
+    Sesquiquadrate -> "⚼"
     Sextile -> "⚹"
     Square -> "□"
+    SemiSquare -> "∠"
     Trine -> "△"
     Opposition -> "☍"
 
@@ -73,6 +108,8 @@ instance ToJSON AspectType where
       Conjunction -> "conjunction"
       Sextile -> "sextile"
       Square -> "square"
+      Sesquiquadrate -> "sesquiquadrate"
+      SemiSquare -> "semisquare"
       Trine -> "trine"
       Opposition -> "opposition"
 
@@ -103,6 +140,7 @@ instance Symbol Planet where
     Pluto -> "♇"
     Moon -> "☽"
     Sun -> "☉"
+    TrueNode -> "☊"
     _ -> "\xfffd" -- replacement character
 
 eclipse, occultation, retrograde :: String
@@ -111,38 +149,37 @@ occultation = "🝵"
 retrograde = "℞"
 
 data Aspect = Aspect
-  { planet1 :: Planet,
+  { point1 :: Point,
     aspectType :: AspectType,
-    planet2 :: Planet
+    point2 :: Point
   }
   deriving (Ord, Show)
 
 aspectString :: Aspect -> String
 aspectString aspect =
   unwords
-    [ symbol (planet1 aspect),
+    [ symbol (point1 aspect),
       symbol (aspectType aspect),
-      symbol (planet2 aspect)
+      symbol (point2 aspect)
     ]
 
 instance Eq Aspect where
   a1 == a2 =
     aspectType a1 == aspectType a2
-      && ( (planet1 a1 == planet1 a2 && planet2 a1 == planet2 a2)
-             || (planet1 a1 == planet2 a2 && planet2 a1 == planet1 a2)
+      && ( (point1 a1 == point1 a2 && point2 a1 == point2 a2)
+             || (point1 a1 == point2 a2 && point2 a1 == point1 a2)
          )
 
 instance ToJSON Aspect where
   toJSON a =
     object
-      [ ("planet1", planetToJson (planet1 a)),
-        ("planet2", planetToJson (planet2 a)),
+      [ ("points", toJSON [point1 a, point2 a]),
         ("type", toJSON (aspectType a))
       ]
 
 allAspects :: SelectionOptions -> [Aspect]
 allAspects options =
-  [ Aspect p1 t p2
+  [ Aspect (Planet p1) t (Planet p2)
     | p1 <- allPlanets options,
       p2 <- allPlanets options,
       p1 < p2,
@@ -151,7 +188,7 @@ allAspects options =
 
 allTransits :: SelectionOptions -> [Aspect]
 allTransits options =
-  [ Aspect pn t pt
+  [ Aspect (Planet pn) t (Planet pt)
     | pn <- allPlanets options,
       pt <- delete Moon (allPlanets options),
       t <- allAspectTypes options
@@ -161,11 +198,13 @@ allAspectTypes :: SelectionOptions -> [AspectType]
 allAspectTypes (aspectTypeSelection -> AllAspectTypes) = sort [Conjunction, Sextile, Square, Trine, Opposition]
 allAspectTypes (aspectTypeSelection -> HardAspectTypes) = sort [Conjunction, Square, Opposition]
 allAspectTypes (aspectTypeSelection -> CustomAspectTypes cs) = sort cs
+allAspectTypes (aspectTypeSelection -> EbertinAspectTypes) = sort [Conjunction, Square, SemiSquare, Sesquiquadrate, Opposition]
 
 allPlanets :: SelectionOptions -> [Planet]
 allPlanets (planetSelection -> ModernPlanets) = [Sun .. Pluto]
 allPlanets (planetSelection -> TraditionalPlanets) = [Sun .. Saturn]
 allPlanets (planetSelection -> CustomPlanets cs) = sort cs
+allPlanets (planetSelection -> EbertinPlanets) = [Sun .. Pluto] ++ [TrueNode]
 
 type TimeSeries a = [(UTCTime, a)]
 
@@ -183,12 +222,12 @@ getValue = snd
 
 type Ephemeris = TimeSeries EclipticPosition
 
-type Chart = Map Planet EclipticPosition
+type Chart = Map Point EclipticPosition
 
 data AspectKind = NatalAspect | TransitAspect
   deriving (Eq, Ord, Show)
 
-data AspectType = Conjunction | Sextile | Square | Trine | Opposition
+data AspectType = Conjunction | Sextile | Square | Trine | Opposition | Sesquiquadrate | SemiSquare
   deriving (Eq, Ord, Show)
 
 class IsEvent e where
@@ -222,6 +261,7 @@ planetToJson = \case
   Pluto -> String "pluto"
   Moon -> String "moon"
   Sun -> String "sun"
+  TrueNode -> String "lunarNode"
   _ -> Null
 
 zodiacSignToJson :: ZodiacSignName -> Value
@@ -258,13 +298,13 @@ data AspectEvent (k :: AspectKind) = AspectEvent
 instance IsEvent (AspectEvent NatalAspect) where
   startTime = aspectStartTime
   endTime = aspectEndTime
-  summary (aspect -> a) = pack $ unwords [symbol (planet1 a), symbol (aspectType a), symbol (planet2 a)]
+  summary (aspect -> a) = pack $ unwords [symbol (point1 a), symbol (aspectType a), symbol (point2 a)]
   maxTime = Just . aspectExactTime
 
 instance IsEvent (AspectEvent TransitAspect) where
   startTime = aspectStartTime
   endTime = aspectEndTime
-  summary (aspect -> a) = pack (unwords [symbol (planet2 a), symbol (aspectType a)]) <> " natal " <> pack (symbol (planet1 a))
+  summary (aspect -> a) = pack (unwords [symbol (point2 a), symbol (aspectType a)]) <> " natal " <> pack (symbol (point1 a))
   maxTime = Just . aspectExactTime
 
 instance ToJSON (AspectEvent NatalAspect) where
@@ -274,8 +314,7 @@ instance ToJSON (AspectEvent NatalAspect) where
           [ "startTime" .= startTime event,
             "endTime" .= endTime event,
             "exactTime" .= aspectExactTime event,
-            "planet1" .= planetToJson (planet1 a),
-            "planet2" .= planetToJson (planet2 a),
+            "points" .= [point1 a, point2 a],
             "type" .= aspectType a
           ]
 
@@ -286,8 +325,8 @@ instance ToJSON (AspectEvent TransitAspect) where
           [ "startTime" .= startTime event,
             "endTime" .= endTime event,
             "exactTime" .= aspectExactTime event,
-            "natalPlanet" .= planetToJson (planet1 a),
-            "transitingPlanet" .= planetToJson (planet2 a),
+            "natalPoint" .= point1 a,
+            "transitingPoint" .= point2 a,
             "type" .= aspectType a
           ]
 
@@ -360,17 +399,20 @@ data PlanetSelection
   = TraditionalPlanets
   | ModernPlanets
   | CustomPlanets [Planet]
+  | EbertinPlanets
 
 data AspectTypeSelection
   = AllAspectTypes
   | HardAspectTypes
   | CustomAspectTypes [AspectType]
+  | EbertinAspectTypes
 
 data OrbSelection
   = ChrisBrennan
   | RichardTarnas
   | AstroDienst
   | LizGreene
+  | ReinholdEbertin
 
 data Command
   = Events EventsSettings
@@ -394,7 +436,6 @@ data SelectionOptions = SelectionOptions
   { planetSelection :: PlanetSelection,
     aspectTypeSelection :: AspectTypeSelection,
     orbSelection :: OrbSelection,
-    midpoints :: Bool,
     position :: Maybe GeographicPosition
   }
 
