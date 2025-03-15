@@ -14,7 +14,7 @@ common warnings
 executable astro-calendar
   import:             warnings
   hs-source-dirs:     src
-  ghc-options:        -O2 -threaded -Wall -with-rtsopts=-N
+  ghc-options:        -O2 -threaded -Wall -with-rtsopts=-N -Werror
   main-is:            Main.hs
   other-modules:
     AstroCalendar.Angle
