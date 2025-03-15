@@ -30,11 +30,7 @@ fromRadians x = Angle (x * 180 / pi)
 
 midpoint :: Angle -> Angle -> Angle
 midpoint a b =
-  let -- Convert longitude to radians
-
-      radToDeg x = x * 180 / pi
-
-      -- Convert longitudes to Cartesian coordinates
+  let -- Convert longitudes to Cartesian coordinates
       (x1, y1) = (cos (radians a), sin (radians a))
       (x2, y2) = (cos (radians b), sin (radians b))
 
