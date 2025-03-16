@@ -39,7 +39,7 @@ chartString charts aspects =
     concat
       [ map (uncurry positionString) $ combineMaps charts,
         [[]],
-        map (uncurry aspectOrbString) (sortOn (abs . snd) $ Map.toList aspects)
+        map (uncurry aspectOrbString) (Map.toList aspects)
       ]
 
 combineMaps :: (Ord k) => [Map.Map k v] -> [(k, [v])]
