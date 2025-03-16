@@ -59,9 +59,9 @@ import GHC.IO (unsafePerformIO)
 import SwissEphemeris (EclipticPosition, FromJulianDay (..), GeographicPosition (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
 
 data Point
-  = Planet Planet
+  = Midpoint Point Point
+  | Planet Planet
   | AnglePoint AnglePoint
-  | Midpoint Point Point
   deriving (Show, Ord, Eq)
 
 data AnglePoint = Ascendant | MediumCaeli
