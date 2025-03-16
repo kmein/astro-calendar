@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
-
 module AstroCalendar.Event (astrologicalEvents, AstrologicalEvents) where
 
 import AstroCalendar.Angle (Angle)
@@ -10,6 +9,7 @@ import AstroCalendar.Ephemeris (fullEphemeris, natalChart, parallelEphemeris)
 import AstroCalendar.Types
 import Control.Arrow (second)
 import Control.Parallel (par)
+import Data.Set qualified as Set
 import Data.Function (on)
 import Data.List (minimumBy)
 import Data.Map qualified as Map
@@ -35,9 +35,9 @@ signEvent planet =
     signFromPosition :: SwE.EclipticPosition -> Maybe SwE.ZodiacSignName
     signFromPosition = SwE.longitudeZodiacSign . SwE.splitDegreesZodiac . SwE.getEclipticLongitude
 
-aspectEvents :: SelectionOptions -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent NatalAspect]
-aspectEvents options aspects =
-  concatMap findOccurrences (allAspects options)
+aspectEvents :: TimeSeries (Map.Map Aspect Angle) -> [AspectEvent NatalAspect]
+aspectEvents aspects =
+  concatMap findOccurrences $ Set.toList $ Set.fromList $ concatMap (Map.keys . snd) aspects
   where
     findOccurrences :: Aspect -> [AspectEvent NatalAspect]
     findOccurrences aspect = mapMaybe period $ chunkTimeSeries (Map.member aspect) aspects
@@ -56,9 +56,9 @@ aspectEvents options aspects =
                   }
           | otherwise = Nothing
 
-transitEvents :: SelectionOptions -> TimeSeries (Map.Map Aspect Angle) -> [AspectEvent TransitAspect]
-transitEvents options transits =
-  concatMap findOccurrences (allTransits options)
+transitEvents :: TimeSeries (Map.Map Aspect Angle) -> [AspectEvent TransitAspect]
+transitEvents transits =
+  concatMap findOccurrences $ Set.toList $ Set.fromList $ concatMap (Map.keys . snd) transits
   where
     findOccurrences :: Aspect -> [AspectEvent TransitAspect]
     findOccurrences transit = mapMaybe period $ chunkTimeSeries (Map.member transit) transits
@@ -111,14 +111,14 @@ astrologicalEvents options settings = do
         | withSigns settings = Just $ concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
         | otherwise = Nothing
       aspectPeriods
-        | withAspects settings = Just $ aspectEvents options $ map (second (findAspects options)) $ parallelEphemeris planetEphemeris
+        | withAspects settings = Just $ aspectEvents $ map (second (findAspects options)) $ parallelEphemeris planetEphemeris
         | otherwise = Nothing
       transitPeriods = \case
         Just birthTime -> do
           natal <- natalChart options birthTime
           pure $
             Just $
-              transitEvents options $
+              transitEvents $
                 map (second (findTransits options natal)) $
                   parallelEphemeris planetEphemeris
         Nothing -> pure Nothing
