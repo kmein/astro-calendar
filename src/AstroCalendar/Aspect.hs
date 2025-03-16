@@ -77,7 +77,7 @@ findTransits options (Map.toList -> chartA) (Map.toList -> chartB) =
     when (chartA == chartB) $ guard $ p1 < p2
     aspectType <- allAspectTypes options
     guard $ case (p1, aspectType, p2) of -- only look at conjunctions between midpoints
-      (Midpoint _ _, Conjunction, Midpoint _ _) -> True
+      -- (Midpoint _ _, Conjunction, Midpoint _ _) -> True
       (Midpoint _ _, _, Midpoint _ _) -> False
       _ -> True
     let diff = abs $ Angle (SwE.getEclipticLongitude x1) `difference` Angle (SwE.getEclipticLongitude x2)
