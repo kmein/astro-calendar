@@ -50,6 +50,7 @@ import Data.Aeson
 import Data.Function (on)
 import Data.List
 import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Maybe
 import Data.Text.Lazy (Text, pack)
 import Data.Time.Calendar
@@ -206,13 +207,13 @@ allPlanets (planetSelection -> TraditionalPlanets) = [Sun .. Saturn]
 allPlanets (planetSelection -> CustomPlanets cs) = sort cs
 allPlanets (planetSelection -> EbertinPlanets) = [Sun .. Pluto] ++ [TrueNode]
 
-type TimeSeries a = [(UTCTime, a)]
+type TimeSeries a = Map UTCTime a
 
 chunkTimeSeries :: (Eq b) => (a -> b) -> TimeSeries a -> [TimeSeries a]
-chunkTimeSeries f = groupBy ((==) `on` (f . snd))
+chunkTimeSeries f = map Map.fromList . groupBy ((==) `on` (f . snd)) . Map.toAscList
 
 timeSeriesTimes :: TimeSeries a -> [UTCTime]
-timeSeriesTimes = map fst
+timeSeriesTimes = sort . Map.keys
 
 getTime :: (UTCTime, a) -> UTCTime
 getTime = fst

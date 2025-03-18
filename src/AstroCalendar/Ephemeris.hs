@@ -63,16 +63,17 @@ fullEphemeris options settings = do
   timePointEphemeris <- mapConcurrently (\planet -> (Planet planet,) <$> planetaryEphemeris planet julianDays) (allPlanets options)
   let midpointEphemeris
         | EbertinPlanets <- planetSelection options =
-            [ (Midpoint p1 p2, Map.toList (Map.intersectionWith midpoint (Map.fromList ephemeris1) (Map.fromList ephemeris2)))
+            [ (Midpoint p1 p2, Map.intersectionWith midpoint ephemeris1 ephemeris2)
               | (p1, ephemeris1) <- timePointEphemeris,
                 (p2, ephemeris2) <- timePointEphemeris
             ]
         | otherwise = []
-  pure $ Map.fromList (timePointEphemeris <> midpointEphemeris)
+  pure $ Map.union (Map.fromList timePointEphemeris) (Map.fromList midpointEphemeris)
 
 planetaryEphemeris :: SwE.Planet -> [SwE.JulianDayUT1] -> IO Ephemeris
-planetaryEphemeris planet times = do
-  catMaybes
+planetaryEphemeris planet times =
+  Map.fromList
+    . catMaybes
     <$> mapConcurrently
       ( \time -> do
           utcTime <- SwE.fromJulianDay time
@@ -84,13 +85,11 @@ planetaryEphemeris planet times = do
     eitherToMaybe = either (const Nothing) Just
 
 parallelEphemeris :: Map.Map Point Ephemeris -> TimeSeries Chart
-parallelEphemeris = Map.toList . Map.foldrWithKey insertToMap Map.empty
+parallelEphemeris = Map.foldrWithKey insertToMap Map.empty
   where
     insertToMap :: Point -> Ephemeris -> Map.Map UTCTime Chart -> Map.Map UTCTime Chart
     insertToMap point ephemeris acc =
-      foldr
-        ( \(time, position) innerAcc ->
-            Map.insertWith Map.union time (Map.singleton point position) innerAcc
-        )
+      Map.foldrWithKey
+        (\time position innerAcc -> Map.insertWith Map.union time (Map.singleton point position) innerAcc)
         acc
         ephemeris

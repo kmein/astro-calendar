@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+
 module AstroCalendar.Event (astrologicalEvents, AstrologicalEvents) where
 
 import AstroCalendar.Angle (Angle)
@@ -7,13 +8,13 @@ import AstroCalendar.Aspect
 import AstroCalendar.Eclipse
 import AstroCalendar.Ephemeris (fullEphemeris, natalChart, parallelEphemeris)
 import AstroCalendar.Types
-import Control.Arrow (second)
+import Data.Time.Clock
 import Control.Parallel (par)
-import Data.Set qualified as Set
 import Data.Function (on)
 import Data.List (minimumBy)
 import Data.Map qualified as Map
 import Data.Maybe
+import Data.Set qualified as Set
 import SwissEphemeris qualified as SwE
 
 type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent NatalAspect], Maybe [AspectEvent TransitAspect], Maybe [EclipseEvent])
@@ -26,7 +27,7 @@ signEvent planet =
     groupToRange group =
       let times = timeSeriesTimes group
        in SignEvent
-            { sign = signFromPosition $ snd $ head group,
+            { sign = signFromPosition $ snd $ Map.findMin group,
               planet = planet,
               signStartTime = minimum times,
               signEndTime = maximum times
@@ -35,16 +36,19 @@ signEvent planet =
     signFromPosition :: SwE.EclipticPosition -> Maybe SwE.ZodiacSignName
     signFromPosition = SwE.longitudeZodiacSign . SwE.splitDegreesZodiac . SwE.getEclipticLongitude
 
+closestTime :: TimeSeries (Map.Map Aspect Angle) -> UTCTime
+closestTime = getTime . minimumBy (compare `on` getValue) . Map.toList
+
 aspectEvents :: TimeSeries (Map.Map Aspect Angle) -> [AspectEvent NatalAspect]
 aspectEvents aspects =
-  concatMap findOccurrences $ Set.toList $ Set.fromList $ concatMap (Map.keys . snd) aspects
+  concatMap findOccurrences $ Set.toList $ Set.fromList $ concatMap Map.keys $ Map.elems aspects
   where
     findOccurrences :: Aspect -> [AspectEvent NatalAspect]
     findOccurrences aspect = mapMaybe period $ chunkTimeSeries (Map.member aspect) aspects
       where
         period :: TimeSeries (Map.Map Aspect Angle) -> Maybe (AspectEvent NatalAspect)
         period aspectTimes
-          | (_, tAspects) : _ <- aspectTimes,
+          | Just (tAspects, _) <- Map.minView aspectTimes,
             times <- timeSeriesTimes aspectTimes,
             Map.member aspect tAspects =
               Just
@@ -52,29 +56,28 @@ aspectEvents aspects =
                   { aspect = aspect,
                     aspectStartTime = minimum times,
                     aspectEndTime = maximum times,
-                    aspectExactTime = getTime (minimumBy (compare `on` ((Map.! aspect) . getValue)) aspectTimes)
+                    aspectExactTime = closestTime aspectTimes
                   }
           | otherwise = Nothing
 
 transitEvents :: TimeSeries (Map.Map Aspect Angle) -> [AspectEvent TransitAspect]
 transitEvents transits =
-  concatMap findOccurrences $ Set.toList $ Set.fromList $ concatMap (Map.keys . snd) transits
+  concatMap findOccurrences $ Set.toList $ Set.fromList $ concatMap Map.keys $ Map.elems transits
   where
     findOccurrences :: Aspect -> [AspectEvent TransitAspect]
     findOccurrences transit = mapMaybe period $ chunkTimeSeries (Map.member transit) transits
       where
         period :: TimeSeries (Map.Map Aspect Angle) -> Maybe (AspectEvent TransitAspect)
         period transitTimes
-          | (_, tTransits) : _ <- transitTimes,
+          | Just (tTransits, _) <- Map.minView transitTimes,
             times <- timeSeriesTimes transitTimes,
-            length transitTimes > 1,
             Map.member transit tTransits =
               Just
                 AspectEvent
                   { aspect = transit,
                     aspectStartTime = minimum times,
                     aspectEndTime = maximum times,
-                    aspectExactTime = getTime (minimumBy (compare `on` ((Map.! transit) . getValue)) transitTimes)
+                    aspectExactTime = closestTime transitTimes
                   }
           | otherwise = Nothing
 
@@ -84,7 +87,7 @@ retrogradeEvents planet =
   where
     groupToRange :: TimeSeries SwE.EclipticPosition -> Maybe RetrogradeEvent
     groupToRange group
-      | (_, lng) : _ <- group,
+      | Just (lng, _) <- Map.minView group,
         direction lng < 0 =
           let times = timeSeriesTimes group
            in Just
@@ -111,7 +114,7 @@ astrologicalEvents options settings = do
         | withSigns settings = Just $ concat $ Map.elems $ Map.mapWithKey signEvent planetEphemeris
         | otherwise = Nothing
       aspectPeriods
-        | withAspects settings = Just $ aspectEvents $ map (second (findAspects options)) $ parallelEphemeris planetEphemeris
+        | withAspects settings = Just $ aspectEvents $ findAspects options <$> parallelEphemeris planetEphemeris
         | otherwise = Nothing
       transitPeriods = \case
         Just birthTime -> do
@@ -119,8 +122,8 @@ astrologicalEvents options settings = do
           pure $
             Just $
               transitEvents $
-                map (second (findTransits options natal)) $
-                  parallelEphemeris planetEphemeris
+                findTransits options natal
+                  <$> parallelEphemeris planetEphemeris
         Nothing -> pure Nothing
   ts <- transitPeriods (transitsTo settings)
   eclipses <- if withEclipses settings then Just <$> findEclipses settings else pure Nothing
