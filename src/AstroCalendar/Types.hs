@@ -237,7 +237,7 @@ class IsEvent e where
   maxTime :: e -> Maybe UTCTime
 
 data SignEvent = SignEvent
-  { planet :: Planet,
+  { planet :: Point,
     sign :: Maybe ZodiacSignName,
     signStartTime :: UTCTime,
     signEndTime :: UTCTime
@@ -282,7 +282,7 @@ zodiacSignToJson = \case
 instance ToJSON SignEvent where
   toJSON event =
     object
-      [ "planet" .= planetToJson (planet event),
+      [ "planet" .= planet event,
         "startTime" .= startTime event,
         "endTime" .= endTime event,
         "sign" .= fmap zodiacSignToJson (sign event)
@@ -363,7 +363,7 @@ instance ToJSON EclipseEvent where
       ]
 
 data RetrogradeEvent = RetrogradeEvent
-  { retrogradePlanet :: Planet,
+  { retrogradePlanet :: Point,
     retrogradeStartTime :: UTCTime,
     retrogradeEndTime :: UTCTime
   }
@@ -373,7 +373,7 @@ instance ToJSON RetrogradeEvent where
     object
       [ "startTime" .= startTime event,
         "endTime" .= endTime event,
-        "planet" .= planetToJson (retrogradePlanet event)
+        "planet" .= retrogradePlanet event
       ]
 
 instance IsEvent RetrogradeEvent where

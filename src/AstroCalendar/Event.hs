@@ -18,7 +18,7 @@ import SwissEphemeris qualified as SwE
 
 type AstrologicalEvents = (Maybe [RetrogradeEvent], Maybe [SignEvent], Maybe [AspectEvent NatalAspect], Maybe [AspectEvent TransitAspect], Maybe [EclipseEvent])
 
-signEvent :: SwE.Planet -> Ephemeris -> [SignEvent]
+signEvent :: Point -> Ephemeris -> [SignEvent]
 signEvent planet =
   map groupToRange . chunkTimeSeries signFromPosition
   where
@@ -78,7 +78,7 @@ transitEvents transits =
                   }
           | otherwise = Nothing
 
-retrogradeEvents :: SwE.Planet -> Ephemeris -> [RetrogradeEvent]
+retrogradeEvents :: Point -> Ephemeris -> [RetrogradeEvent]
 retrogradeEvents planet =
   mapMaybe groupToRange . chunkTimeSeries direction
   where
