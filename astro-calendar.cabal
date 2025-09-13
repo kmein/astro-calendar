@@ -11,12 +11,11 @@ build-type:      Simple
 common warnings
   ghc-options: -Wall
 
-executable astro-calendar
+library astro-calendar-lib
   import:             warnings
   hs-source-dirs:     src
   ghc-options:        -O2 -threaded -Wall -with-rtsopts=-N -Werror
-  main-is:            Main.hs
-  other-modules:
+  exposed-modules:
     AstroCalendar.Angle
     AstroCalendar.Aspect
     AstroCalendar.Chart
@@ -35,14 +34,11 @@ executable astro-calendar
     , bytestring            >=0.11  && <1
     , containers            >=0.6   && <1
     , data-default          >=0.7   && <1
-    , hslogger              >=1     && <2
+    , iCalendar             >=0.4   && <1
     , http-client           >=0.7   && <1
     , http-client-tls       >=0.3   && <1
-    , iCalendar             >=0.4   && <1
-    , optparse-applicative  >=0.18  && <1
-    , parallel              >=3     && <4
     , swiss-ephemeris       >=1.4   && <2
-    , safe
+    , parallel              >=3     && <4
     , text                  >=2     && <3
     , time                  >=1.12  && <2
     , uuid                  >=1.3.0 && <2
@@ -53,3 +49,26 @@ executable astro-calendar
     ImportQualifiedPost
     NamedFieldPuns
     TupleSections
+
+executable astro-calendar-cli
+  import:             warnings
+  hs-source-dirs:     app
+  ghc-options:        -O2 -threaded -Wall -with-rtsopts=-N -Werror
+  main-is:            Main.hs
+  build-depends:
+    , astro-calendar-lib
+    , aeson                 >=2     && <3
+    , base                  >=4     && <5
+    , bytestring            >=0.11  && <1
+    , data-default          >=0.7   && <1
+    , iCalendar             >=0.4   && <1
+    , optparse-applicative  >=0.18  && <1
+    , safe
+    , swiss-ephemeris       >=1.4   && <2
+    , text                  >=2     && <3
+    , time                  >=1.12  && <2
+
+  default-language:   Haskell2010
+  default-extensions:
+    ImportQualifiedPost
+    NamedFieldPuns
