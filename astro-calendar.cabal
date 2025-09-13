@@ -1,7 +1,7 @@
 cabal-version:   3.0
 name:            astro-calendar
 version:         1.0.0
-license:         AGPL-3.0-or-later
+license:         MIT
 license-file:    LICENSE
 author:          Kierán Meinhardt
 maintainer:      kmein@posteo.de
