@@ -195,30 +195,9 @@ parseGeographicPosition = eitherReader $ \input ->
 
 parsePlanets :: ReadM [SwE.Planet]
 parsePlanets = eitherReader (mapM parsePlanet . TL.splitOn "," . TL.pack)
-  where
-    parsePlanet = \case
-      "sun" -> Right SwE.Sun
-      "moon" -> Right SwE.Moon
-      "mercury" -> Right SwE.Mercury
-      "venus" -> Right SwE.Venus
-      "mars" -> Right SwE.Mars
-      "jupiter" -> Right SwE.Jupiter
-      "saturn" -> Right SwE.Saturn
-      "uranus" -> Right SwE.Uranus
-      "neptune" -> Right SwE.Neptune
-      "pluto" -> Right SwE.Pluto
-      _ -> Left "Invalid planet"
 
 parseAspectTypes :: ReadM [AspectType]
 parseAspectTypes = eitherReader (mapM parseAspectType . TL.splitOn "," . TL.pack)
-  where
-    parseAspectType = \case
-      "conjunction" -> Right Conjunction
-      "opposition" -> Right Opposition
-      "square" -> Right Square
-      "sextile" -> Right Sextile
-      "trine" -> Right Trine
-      _ -> Left "Invalid aspect"
 
 eventToString :: (IsEvent e) => EventsSettings -> e -> String
 eventToString settings event =

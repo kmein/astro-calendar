@@ -2,3 +2,4 @@ result
 *.ics
 .aider*
 .env
+delineations.csv

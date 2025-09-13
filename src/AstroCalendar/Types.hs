@@ -9,7 +9,7 @@ module AstroCalendar.Types
   ( AspectType (..),
     AspectKind (..),
     Chart,
-    AnglePoint(..),
+    AnglePoint (..),
     Ephemeris,
     Aspect (..),
     TimeSeries,
@@ -36,6 +36,8 @@ module AstroCalendar.Types
     SelectionOptions (..),
     Precision (..),
     formatTimeWithPrecision,
+    parsePlanet,
+    parseAspectType,
     EventsSettings (..),
     PlanetSelection (..),
     AspectTypeSelection (..),
@@ -144,6 +146,20 @@ instance Symbol Planet where
     TrueNode -> "☊"
     _ -> "\xfffd" -- replacement character
 
+parsePlanet :: Text -> Either String Planet
+parsePlanet = \case
+  "sun" -> Right Sun
+  "moon" -> Right Moon
+  "mercury" -> Right Mercury
+  "venus" -> Right Venus
+  "mars" -> Right Mars
+  "jupiter" -> Right Jupiter
+  "saturn" -> Right Saturn
+  "uranus" -> Right Uranus
+  "neptune" -> Right Neptune
+  "pluto" -> Right Pluto
+  _ -> Left "Invalid planet"
+
 eclipse, occultation, retrograde :: String
 eclipse = "🝶"
 occultation = "🝵"
@@ -163,6 +179,15 @@ aspectString aspect =
       symbol (aspectType aspect),
       symbol (point2 aspect)
     ]
+
+parseAspectType :: Text -> Either String AspectType
+parseAspectType = \case
+  "conjunction" -> Right Conjunction
+  "opposition" -> Right Opposition
+  "square" -> Right Square
+  "sextile" -> Right Sextile
+  "trine" -> Right Trine
+  _ -> Left "Invalid aspect"
 
 instance Eq Aspect where
   a1 == a2 =

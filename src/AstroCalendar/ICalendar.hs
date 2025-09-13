@@ -1,5 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds #-}
+
 module AstroCalendar.ICalendar where
 
+import AstroCalendar.Delineation (Delineations, getDelineations)
 import AstroCalendar.Event
 import AstroCalendar.Types
 import Data.Default
@@ -14,9 +18,21 @@ import Text.ICalendar
 
 astrologicalCalendar :: Precision -> AstrologicalEvents -> IO VCalendar
 astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, transitPeriods, eclipses) = do
+  delineations <- getDelineations
   signVEvents <- traverse makeVEvent' (fromMaybe [] signPeriods)
   retrogradeVEvents <- traverse makeVEvent' (fromMaybe [] retrogradePeriods)
-  aspectVEvents <- traverse makeVEvent' (fromMaybe [] aspectPeriods)
+  let makeAspectVEvent :: AspectEvent NatalAspect -> IO VEvent
+      makeAspectVEvent e = do
+        ve <- makeVEvent' e
+        let delineation = eventSummary delineations e
+            newDescription =
+              case (veDescription ve, delineation) of
+                (Just desc, Just d) -> Just desc {descriptionValue = descriptionValue desc <> "\n\n" <> d}
+                (Just desc, Nothing) -> Just desc
+                (Nothing, Just d) -> Just Description {descriptionValue = d, descriptionAltRep = def, descriptionLanguage = def, descriptionOther = def}
+                (Nothing, Nothing) -> Nothing
+        return ve {veDescription = newDescription}
+  aspectVEvents <- traverse makeAspectVEvent (fromMaybe [] aspectPeriods)
   transitVEvents <- traverse makeVEvent' (fromMaybe [] transitPeriods)
   eclipseVEvents <- traverse makeVEvent' (fromMaybe [] eclipses)
   let events = signVEvents ++ retrogradeVEvents ++ aspectVEvents ++ transitVEvents ++ eclipseVEvents
@@ -27,6 +43,13 @@ astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, t
   where
     makeVEvent' :: (IsEvent e) => e -> IO VEvent
     makeVEvent' = makeVEvent precision
+
+eventSummary :: Delineations -> AspectEvent k -> Maybe TL.Text
+eventSummary delineations e =
+  case e of
+    AspectEvent {aspect = Aspect {point1 = Planet p1, point2 = Planet p2, aspectType}} ->
+      Map.lookup (min p1 p2, max p1 p2, aspectType) delineations
+    _ -> Nothing
 
 makeVEvent :: (IsEvent e) => Precision -> e -> IO VEvent
 makeVEvent precision e = do
