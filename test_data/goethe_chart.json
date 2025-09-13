@@ -1,0 +1,268 @@
+{
+  "aspects": [
+    {
+      "orb": 0.167565727922792,
+      "points": [
+        "venus",
+        "neptune"
+      ],
+      "type": "sextile"
+    },
+    {
+      "orb": 0.4709626188059133,
+      "points": [
+        "venus",
+        "jupiter"
+      ],
+      "type": "opposition"
+    },
+    {
+      "orb": 0.6385283467287195,
+      "points": [
+        "jupiter",
+        "neptune"
+      ],
+      "type": "trine"
+    },
+    {
+      "orb": 0.7141707026398194,
+      "points": [
+        "moon",
+        "medium-caeli"
+      ],
+      "type": "opposition"
+    },
+    {
+      "orb": 1.6313044913693204,
+      "points": [
+        "sun",
+        "mars"
+      ],
+      "type": "trine"
+    },
+    {
+      "orb": 2.305493926466852,
+      "points": [
+        "saturn",
+        "medium-caeli"
+      ],
+      "type": "sextile"
+    },
+    {
+      "orb": 2.5645013396931517,
+      "points": [
+        "neptune",
+        "pluto"
+      ],
+      "type": "trine"
+    },
+    {
+      "orb": 2.732067067615958,
+      "points": [
+        "venus",
+        "pluto"
+      ],
+      "type": "sextile"
+    },
+    {
+      "orb": 2.9886177048574325,
+      "points": [
+        "jupiter",
+        "ascendant"
+      ],
+      "type": "trine"
+    },
+    {
+      "orb": 3.0006688531577765,
+      "points": [
+        "mercury",
+        "ascendant"
+      ],
+      "type": "square"
+    },
+    {
+      "orb": 3.0196646291066713,
+      "points": [
+        "moon",
+        "saturn"
+      ],
+      "type": "trine"
+    },
+    {
+      "orb": 3.190978538121499,
+      "points": [
+        "mercury",
+        "pluto"
+      ],
+      "type": "square"
+    },
+    {
+      "orb": 3.203029686421843,
+      "points": [
+        "jupiter",
+        "pluto"
+      ],
+      "type": "trine"
+    },
+    {
+      "orb": 3.4595803236633174,
+      "points": [
+        "venus",
+        "ascendant"
+      ],
+      "type": "sextile"
+    },
+    {
+      "orb": 3.5988008272306615,
+      "points": [
+        "saturn",
+        "uranus"
+      ],
+      "type": "square"
+    },
+    {
+      "orb": 3.6271460515861236,
+      "points": [
+        "neptune",
+        "ascendant"
+      ],
+      "type": "trine"
+    },
+    {
+      "orb": 4.173533218420886,
+      "points": [
+        "uranus",
+        "ascendant"
+      ],
+      "type": "square"
+    },
+    {
+      "orb": 6.020376193947413,
+      "points": [
+        "sun",
+        "pluto"
+      ],
+      "type": "square"
+    },
+    {
+      "orb": 6.995977740015093,
+      "points": [
+        "sun",
+        "moon"
+      ],
+      "type": "opposition"
+    },
+    {
+      "orb": 7.592101388999936,
+      "points": [
+        "mars",
+        "jupiter"
+      ],
+      "type": "square"
+    },
+    {
+      "orb": 7.7101484426549405,
+      "points": [
+        "sun",
+        "medium-caeli"
+      ],
+      "type": "conjunction"
+    },
+    {
+      "orb": 7.772334045651519,
+      "points": [
+        "saturn",
+        "ascendant"
+      ],
+      "type": "conjunction"
+    }
+  ],
+  "charts": [
+    [
+      {
+        "degrees": 5,
+        "minutes": 11,
+        "planet": "sun",
+        "retrograde": false,
+        "sign": "virgo"
+      },
+      {
+        "degrees": 12,
+        "minutes": 11,
+        "planet": "moon",
+        "retrograde": false,
+        "sign": "pisces"
+      },
+      {
+        "degrees": 25,
+        "minutes": 58,
+        "planet": "mercury",
+        "retrograde": false,
+        "sign": "leo"
+      },
+      {
+        "degrees": 26,
+        "minutes": 26,
+        "planet": "venus",
+        "retrograde": false,
+        "sign": "virgo"
+      },
+      {
+        "degrees": 3,
+        "minutes": 33,
+        "planet": "mars",
+        "retrograde": false,
+        "sign": "capricorn"
+      },
+      {
+        "degrees": 25,
+        "minutes": 57,
+        "planet": "jupiter",
+        "retrograde": true,
+        "sign": "pisces"
+      },
+      {
+        "degrees": 15,
+        "minutes": 12,
+        "planet": "saturn",
+        "retrograde": false,
+        "sign": "scorpio"
+      },
+      {
+        "degrees": 18,
+        "minutes": 48,
+        "planet": "uranus",
+        "retrograde": true,
+        "sign": "aquarius"
+      },
+      {
+        "degrees": 26,
+        "minutes": 36,
+        "planet": "neptune",
+        "retrograde": false,
+        "sign": "cancer"
+      },
+      {
+        "degrees": 29,
+        "minutes": 10,
+        "planet": "pluto",
+        "retrograde": false,
+        "sign": "scorpio"
+      },
+      {
+        "degrees": 22,
+        "minutes": 58,
+        "planet": "ascendant",
+        "retrograde": false,
+        "sign": "scorpio"
+      },
+      {
+        "degrees": 12,
+        "minutes": 53,
+        "planet": "medium-caeli",
+        "retrograde": false,
+        "sign": "virgo"
+      }
+    ]
+  ]
+}
