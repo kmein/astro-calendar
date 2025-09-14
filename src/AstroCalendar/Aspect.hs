@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module AstroCalendar.Aspect (findAspects, findTransits) where
+module AstroCalendar.Aspect (findAspects, findTransits, distanceDegrees) where
 
 import AstroCalendar.Angle
 import AstroCalendar.Types

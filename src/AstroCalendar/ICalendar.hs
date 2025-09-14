@@ -1,17 +1,20 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module AstroCalendar.ICalendar where
 
 import AstroCalendar.Delineation (Delineations, getDelineations)
 import AstroCalendar.Event
+import AstroCalendar.ExactTime (findExactTimes)
 import AstroCalendar.Types
+import Control.Applicative ((<|>))
 import Data.Default
 import Data.Map qualified as Map
 import Data.Maybe
 import Data.Text.Lazy qualified as TL
 import Data.Time.Calendar
 import Data.Time.Clock
+import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUID
 import Text.ICalendar
@@ -19,30 +22,35 @@ import Text.ICalendar
 astrologicalCalendar :: Precision -> AstrologicalEvents -> IO VCalendar
 astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, transitPeriods, eclipses) = do
   delineations <- getDelineations
-  signVEvents <- traverse makeVEvent' (fromMaybe [] signPeriods)
-  retrogradeVEvents <- traverse makeVEvent' (fromMaybe [] retrogradePeriods)
-  let makeAspectVEvent :: AspectEvent NatalAspect -> IO VEvent
-      makeAspectVEvent e = do
-        ve <- makeVEvent' e
-        let delineation = eventSummary delineations e
-            newDescription =
-              case (veDescription ve, delineation) of
-                (Just desc, Just d) -> Just desc {descriptionValue = descriptionValue desc <> "\n\n" <> d}
-                (Just desc, Nothing) -> Just desc
-                (Nothing, Just d) -> Just Description {descriptionValue = d, descriptionAltRep = def, descriptionLanguage = def, descriptionOther = def}
-                (Nothing, Nothing) -> Nothing
-        return ve {veDescription = newDescription}
-  aspectVEvents <- traverse makeAspectVEvent (fromMaybe [] aspectPeriods)
-  transitVEvents <- traverse makeVEvent' (fromMaybe [] transitPeriods)
-  eclipseVEvents <- traverse makeVEvent' (fromMaybe [] eclipses)
+  signVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] signPeriods)
+  retrogradeVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] retrogradePeriods)
+  aspectVEvents <- traverse (makeAspectVEvent delineations) (fromMaybe [] aspectPeriods)
+  transitVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] transitPeriods)
+  eclipseVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] eclipses)
   let events = signVEvents ++ retrogradeVEvents ++ aspectVEvents ++ transitVEvents ++ eclipseVEvents
   return $
     def
       { vcEvents = Map.fromList (map (\e -> ((uidValue (veUID e), Nothing), e)) events)
       }
   where
-    makeVEvent' :: (IsEvent e) => e -> IO VEvent
-    makeVEvent' = makeVEvent precision
+    englishList :: [TL.Text] -> Maybe TL.Text
+    englishList [] = Nothing
+    englishList [x] = Just x
+    englishList [x, y] = Just $ x <> " and " <> y
+    englishList xs = Just $ TL.intercalate ", " (init xs) <> ", and " <> last xs
+    timeString :: UTCTime -> TL.Text
+    timeString = TL.pack . formatTime defaultTimeLocale "%B %d, %Y %H:%M UTC"
+    makeAspectVEvent :: Delineations -> AspectEvent NatalAspect -> IO VEvent
+    makeAspectVEvent delineations e = do
+      exactTimes <- findExactTimes e
+      let delineation = eventSummary delineations e
+          description =
+            TL.unlines $
+              catMaybes
+                [ delineation,
+                  fmap ((<> ".") . ("Going exact on " <>)) (englishList (map timeString exactTimes)) <|> Just "Does not go exact."
+                ]
+      makeVEvent precision (Just description) e
 
 eventSummary :: Delineations -> AspectEvent k -> Maybe TL.Text
 eventSummary delineations e =
@@ -51,8 +59,8 @@ eventSummary delineations e =
       Map.lookup (min p1 p2, max p1 p2, aspectType) delineations
     _ -> Nothing
 
-makeVEvent :: (IsEvent e) => Precision -> e -> IO VEvent
-makeVEvent precision e = do
+makeVEvent :: (IsEvent e) => Precision -> Maybe TL.Text -> e -> IO VEvent
+makeVEvent precision description e = do
   uuid <- TL.fromStrict . UUID.toText <$> UUID.nextRandom
   pure $
     VEvent
@@ -60,14 +68,14 @@ makeVEvent precision e = do
           fmap
             ( \d ->
                 ( Description
-                    { descriptionValue = TL.pack (formatTimeWithPrecision precision d),
+                    { descriptionValue = d,
                       descriptionAltRep = def,
                       descriptionLanguage = def,
                       descriptionOther = def
                     }
                 )
             )
-            (maxTime e),
+            description,
         veSummary =
           Just
             ( Summary
@@ -84,19 +92,29 @@ makeVEvent precision e = do
             },
         veUID = UID {uidValue = uuid, uidOther = def},
         veDTStart =
-          Just
-            DTStartDateTime
-              { dtStartDateTimeValue = UTCDateTime (startTime e),
-                dtStartOther = def
-              },
+          Just $ case precision of
+            AstroCalendar.Types.Daily ->
+              DTStartDate
+                { dtStartDateValue = Date (utctDay (startTime e)),
+                  dtStartOther = def
+                }
+            _ ->
+              DTStartDateTime
+                { dtStartDateTimeValue = UTCDateTime (startTime e),
+                  dtStartOther = def
+                },
         veDTEndDuration =
-          Just
-            ( Left
-                DTEndDateTime
-                  { dtEndDateTimeValue = UTCDateTime (endTime e),
-                    dtEndOther = def
-                  }
-            ),
+          Just $ Left $ case precision of
+            AstroCalendar.Types.Daily ->
+              DTEndDate
+                { dtEndDateValue = Date (addDays 1 (utctDay (endTime e))),
+                  dtEndOther = def
+                }
+            _ ->
+              DTEndDateTime
+                { dtEndDateTimeValue = UTCDateTime (endTime e),
+                  dtEndOther = def
+                },
         veTransp = Transparent {timeTransparencyOther = def},
         veAlarms = def,
         veAttach = def,

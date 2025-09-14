@@ -27,6 +27,7 @@ library astro-calendar-lib
     AstroCalendar.Types
     AstroCalendar.Commonalities
     AstroCalendar.Delineation
+    AstroCalendar.ExactTime
 
   build-depends:
     , aeson                 >=2     && <3
@@ -70,23 +71,6 @@ executable astro-calendar-cli
     , swiss-ephemeris       >=1.4   && <2
     , text                  >=2     && <3
     , time                  >=1.12  && <2
-
-  default-language:   Haskell2010
-  default-extensions:
-    ImportQualifiedPost
-    NamedFieldPuns
-
-
-executable astro-calendar-finder
-  import:             warnings
-  hs-source-dirs:     app
-  ghc-options:        -O2 -threaded -Wall -with-rtsopts=-N -Werror
-  main-is:            Finder.hs
-  build-depends:
-    , astro-calendar-lib
-    , base
-    , time
-    , swiss-ephemeris       >=1.4   && <2
 
   default-language:   Haskell2010
   default-extensions:
