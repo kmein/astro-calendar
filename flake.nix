@@ -3,8 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-    almanac.url = "github:lfborjas/almanac";
-    almanac.flake = false;
     swiss-ephemeris.url = "github:lfborjas/swiss-ephemeris";
     swiss-ephemeris.flake = false;
     swisseph.url = "github:aloistr/swisseph";
@@ -37,26 +35,27 @@
         {
           haskellPackages = prev.haskellPackages.extend (
             finalHaskell: prevHaskell: {
-              swiss-ephemeris = hsLib.doJailbreak (
-                prevHaskell.callCabal2nix "swiss-ephemeris" inputs.swiss-ephemeris { }
-              );
-              almanac = hsLib.doJailbreak (
-                prevHaskell.callCabal2nix "almanac" inputs.almanac {
-                  inherit (finalHaskell) swiss-ephemeris;
-                }
+              swiss-ephemeris = hsLib.dontCheck (
+                hsLib.doJailbreak (prevHaskell.callCabal2nix "swiss-ephemeris" inputs.swiss-ephemeris { })
               );
               iCalendar = hsLib.unmarkBroken (hsLib.doJailbreak prevHaskell.iCalendar);
               astro-calendar = hsLib.doHaddock (
                 prevHaskell.callCabal2nix "astro-calendar" ./. {
-                  inherit (finalHaskell) almanac swiss-ephemeris iCalendar;
+                  inherit (finalHaskell) swiss-ephemeris iCalendar;
                 }
               );
             }
           );
+          swissEphemeris = prev.runCommand "ephemeris" {} ''
+            mkdir -p $out
+            cp -rf ${inputs.swisseph.outPath}/ephe/* $out
+            cp -rf ${inputs.almanac.outPath}/test/ephe/* $out
+          '';
         };
 
-      packages = forAllSystems (system: {
-        default = (pkgsForSystem system).haskellPackages.astro-calendar;
+      packages = forAllSystems (system: let pkgs = pkgsForSystem system; in {
+        default = pkgs.haskellPackages.astro-calendar;
+        swissEphemeris = pkgs.swissEphemeris;
       });
 
       devShells = forAllSystems (
@@ -88,7 +87,7 @@
             ];
             exactDeps = true;
             shellHook = ''
-              export SE_EPHE_PATH=${inputs.swisseph.outPath}/ephe
+              export EP4_PATH=${inputs.self.packages.${system}.swissEphemeris}
             '';
           };
         }

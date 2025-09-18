@@ -39,6 +39,7 @@ astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, t
     englishList [x, y] = Just $ x <> " and " <> y
     englishList xs = Just $ TL.intercalate ", " (init xs) <> ", and " <> last xs
     timeString :: UTCTime -> TL.Text
+    -- TODO zone the time correctly
     timeString = TL.pack . formatTime defaultTimeLocale "%B %d, %Y %H:%M UTC"
     makeAspectVEvent :: Delineations -> AspectEvent NatalAspect -> IO VEvent
     makeAspectVEvent delineations e = do
@@ -56,7 +57,7 @@ eventSummary :: Delineations -> AspectEvent k -> Maybe TL.Text
 eventSummary delineations e =
   case e of
     AspectEvent {aspect = Aspect {point1 = Planet p1, point2 = Planet p2, aspectType}} ->
-      Map.lookup (min p1 p2, max p1 p2, aspectType) delineations
+      delineations (min p1 p2, max p1 p2, aspectType)
     _ -> Nothing
 
 makeVEvent :: (IsEvent e) => Precision -> Maybe TL.Text -> e -> IO VEvent
@@ -67,13 +68,12 @@ makeVEvent precision description e = do
       { veDescription =
           fmap
             ( \d ->
-                ( Description
-                    { descriptionValue = d,
-                      descriptionAltRep = def,
-                      descriptionLanguage = def,
-                      descriptionOther = def
-                    }
-                )
+                Description
+                  { descriptionValue = d,
+                    descriptionAltRep = def,
+                    descriptionLanguage = def,
+                    descriptionOther = def
+                  }
             )
             description,
         veSummary =

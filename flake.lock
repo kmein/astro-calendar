@@ -1,21 +1,5 @@
 {
   "nodes": {
-    "almanac": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1640984494,
-        "narHash": "sha256-xxbrGJtRK6wzOR09vGPqoUvnY5f0h6hn6Uecy331Zhw=",
-        "owner": "lfborjas",
-        "repo": "almanac",
-        "rev": "72931bd9accefccd2df59d9d64a6cbb91f2d5f17",
-        "type": "github"
-      },
-      "original": {
-        "owner": "lfborjas",
-        "repo": "almanac",
-        "type": "github"
-      }
-    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1758035966,
@@ -34,7 +18,6 @@
     },
     "root": {
       "inputs": {
-        "almanac": "almanac",
         "nixpkgs": "nixpkgs",
         "swiss-ephemeris": "swiss-ephemeris",
         "swisseph": "swisseph"

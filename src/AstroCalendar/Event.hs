@@ -133,5 +133,3 @@ astrologicalEvents options settings = do
             ts,
             eclipses
           )
-
-

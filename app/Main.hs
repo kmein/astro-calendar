@@ -12,6 +12,7 @@ import AstroCalendar.Interpretation
 import AstroCalendar.Types
 import Control.Monad
 import Data.Aeson qualified as JSON
+import Data.ByteString.Char8 qualified as B
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Default
 import Data.List (sort)
@@ -19,6 +20,8 @@ import Data.Maybe
 import Data.Text.Lazy qualified as TL
 import Data.Time.Clock
 import Data.Time.Format
+import Data.Time.Zones (TZ)
+import Data.Time.Zones.All (tzByName)
 import Options.Applicative
 import Safe
 import SwissEphemeris qualified as SwE
@@ -63,7 +66,8 @@ sample =
                     <|> flag' ReinholdEbertin (long "ebertin-orbs" <> help "Use orbs like Reinhold Ebertin")
                     <|> pure AstroDienst
                 )
-            <*> optional (option parseGeographicPosition (long "at" <> help "Calculate houses for certain location"))
+            <*> optional (option parseGeographicPosition (long "at" <> help "Calculate houses for certain location" <> metavar "LAT,LON"))
+            <*> optional (option parseTimeZone (long "time-zone" <> short 'z' <> help "Show event times in given time zone" <> metavar "TZ"))
         )
     <*> switch
       ( long "interpret"
@@ -132,6 +136,7 @@ sample =
                               ( long "eclipses"
                                   <> help "Include eclipses"
                               )
+                            <*> switch (long "exact" <> help "Calculate exact times")
                             <*> optional
                               ( option
                                   (parseUTCTime <|> parseDate)
@@ -183,6 +188,12 @@ parseDate = eitherReader $ \input ->
   case parseTimeM True defaultTimeLocale "%Y-%m-%d" input of
     Just time -> Right time
     Nothing -> Left "Invalid time format. Expected format: YYYY-MM-DD (HH:MM)"
+
+parseTimeZone :: ReadM TZ
+parseTimeZone = eitherReader $ \input ->
+  case tzByName (B.pack input) of
+    Just tz -> Right tz
+    Nothing -> Left $ "Unknown time zone: " ++ input
 
 parseGeographicPosition :: ReadM SwE.GeographicPosition
 parseGeographicPosition = eitherReader $ \input ->

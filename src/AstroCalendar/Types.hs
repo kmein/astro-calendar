@@ -13,6 +13,7 @@ module AstroCalendar.Types
     Ephemeris,
     Aspect (..),
     TimeSeries,
+    EventStringSettings (..),
     aspectString,
     allAspects,
     allAspectTypes,
@@ -45,6 +46,7 @@ module AstroCalendar.Types
     EclipseEvent (..),
     retrograde,
     dateRange,
+    toConfiguredZonedTime,
   )
 where
 
@@ -60,6 +62,10 @@ import Data.Time.Clock
 import Data.Time.Format
 import GHC.IO (unsafePerformIO)
 import SwissEphemeris (EclipticPosition, FromJulianDay (..), GeographicPosition (..), JulianDayUT1, LunarEclipseInformation (..), Planet (..), SolarEclipseInformation (..), ZodiacSignName (..))
+import Data.Time.Zones (TZ, timeZoneForUTCTime)
+import Data.Time.LocalTime (ZonedTime, utcToZonedTime, utc)
+
+data EventStringSettings = WithDate | WithoutDate
 
 data Point
   = Midpoint Point Point
@@ -439,6 +445,7 @@ data EventsSettings = EventsSettings
     withAspects :: Bool,
     withSigns :: Bool,
     withEclipses :: Bool,
+    exactTimes :: Bool,
     settingsBegin :: Maybe UTCTime,
     settingsEnd :: Maybe UTCTime,
     transitsTo :: Maybe UTCTime,
@@ -450,7 +457,8 @@ data SelectionOptions = SelectionOptions
   { planetSelection :: PlanetSelection,
     aspectTypeSelection :: AspectTypeSelection,
     orbSelection :: OrbSelection,
-    position :: Maybe GeographicPosition
+    position :: Maybe GeographicPosition,
+    tzSelection :: Maybe TZ
   }
 
 data Settings = Settings
@@ -461,7 +469,14 @@ data Settings = Settings
   }
 
 currentYear :: Year
-currentYear = 2025
+{-# NOINLINE currentYear #-}
+currentYear = unsafePerformIO $ fmap (\t -> let (y, _, _) = toGregorian (utctDay t) in y) getCurrentTime
+
+toConfiguredZonedTime :: SelectionOptions -> UTCTime -> ZonedTime
+toConfiguredZonedTime options utcTime =
+  let maybeConfiguredTimeZone = (`timeZoneForUTCTime` utcTime) <$> tzSelection options
+      configuredTimeZone = fromMaybe utc maybeConfiguredTimeZone
+   in utcToZonedTime configuredTimeZone utcTime
 
 dateRange :: EventsSettings -> (UTCTime, UTCTime)
 dateRange settings = (beginning, end)
