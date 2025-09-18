@@ -1,24 +1,13 @@
-module AstroCalendar.Ephemeris (fullEphemeris, parallelEphemeris, natalChart) where
+module AstroCalendar.Ephemeris (natalChart) where
 
 import AstroCalendar.Angle (longitudeToEclipticPosition, midpoint)
 import AstroCalendar.Types
-import Control.Concurrent.Async
 import Control.Monad (guard)
+import Data.Foldable (toList)
 import Data.Map qualified as Map
 import Data.Maybe
-import Data.Time.Clock (UTCTime (..), addUTCTime, nominalDay, secondsToNominalDiffTime)
+import Data.Time.Clock (UTCTime (..))
 import SwissEphemeris qualified as SwE
-
-yearTimes :: EventsSettings -> [UTCTime]
-yearTimes settings =
-  let step = case settingsPrecision settings of
-        Minutely -> secondsToNominalDiffTime 60
-        Hourly -> secondsToNominalDiffTime $ 60 * 60
-        Daily -> nominalDay
-        Monthly -> 30 * nominalDay
-        Yearly -> 365.2425 * nominalDay
-      (beginning, end) = dateRange settings
-   in takeWhile (<= end) (iterate (addUTCTime step) beginning)
 
 natalChart :: SelectionOptions -> UTCTime -> IO Chart
 natalChart options utcTime = do
@@ -42,7 +31,7 @@ natalChart options utcTime = do
                 position <- SwE.calculateEclipticPosition time planet
                 pure $ (planet,) <$> eitherToMaybe position
             )
-            (allPlanets options)
+            (toList $ allPlanets options)
       let planetsAndAngles = Map.mapKeys Planet planets `Map.union` Map.mapKeys AnglePoint angles
           theMidpoints
             | EbertinPlanets <- planetSelection options =
@@ -56,40 +45,3 @@ natalChart options utcTime = do
     _ -> error $ "Could not convert to julian day: " ++ show utcTime
   where
     eitherToMaybe = either (const Nothing) Just
-
-fullEphemeris :: SelectionOptions -> EventsSettings -> IO (Map.Map Point Ephemeris)
-fullEphemeris options settings = do
-  julianDays <- catMaybes <$> mapConcurrently SwE.toJulianDay (yearTimes settings)
-  timePointEphemeris <- mapConcurrently (\planet -> (Planet planet,) <$> planetaryEphemeris planet julianDays) (allPlanets options)
-  let midpointEphemeris
-        | EbertinPlanets <- planetSelection options =
-            [ (Midpoint p1 p2, Map.intersectionWith midpoint ephemeris1 ephemeris2)
-              | (p1, ephemeris1) <- timePointEphemeris,
-                (p2, ephemeris2) <- timePointEphemeris
-            ]
-        | otherwise = []
-  pure $ Map.union (Map.fromList timePointEphemeris) (Map.fromList midpointEphemeris)
-
-planetaryEphemeris :: SwE.Planet -> [SwE.JulianDayUT1] -> IO Ephemeris
-planetaryEphemeris planet times =
-  Map.fromList
-    . catMaybes
-    <$> mapConcurrently
-      ( \time -> do
-          utcTime <- SwE.fromJulianDay time
-          position <- SwE.calculateEclipticPosition time planet
-          pure $ fmap (utcTime,) (eitherToMaybe position)
-      )
-      times
-  where
-    eitherToMaybe = either (const Nothing) Just
-
-parallelEphemeris :: Map.Map Point Ephemeris -> TimeSeries Chart
-parallelEphemeris = Map.foldrWithKey insertToMap Map.empty
-  where
-    insertToMap :: Point -> Ephemeris -> Map.Map UTCTime Chart -> Map.Map UTCTime Chart
-    insertToMap point ephemeris acc =
-      Map.foldrWithKey
-        (\time position innerAcc -> Map.insertWith Map.union time (Map.singleton point position) innerAcc)
-        acc
-        ephemeris

@@ -3,65 +3,25 @@
 
 module AstroCalendar.ICalendar where
 
-import AstroCalendar.Delineation (Delineations, getDelineations)
+import Almanac qualified
+import AstroCalendar.Delineation (Delineations, getDelineationFor, getDelineations)
 import AstroCalendar.Event
-import AstroCalendar.ExactTime (findExactTimes)
 import AstroCalendar.Types
-import Control.Applicative ((<|>))
 import Data.Default
 import Data.Map qualified as Map
-import Data.Maybe
 import Data.Text.Lazy qualified as TL
 import Data.Time.Calendar
 import Data.Time.Clock
-import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.UUID qualified as UUID
+import Data.Time.Format (formatTime, defaultTimeLocale)
 import Data.UUID.V4 qualified as UUID
 import Text.ICalendar
 
-astrologicalCalendar :: Precision -> AstrologicalEvents -> IO VCalendar
-astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, transitPeriods, eclipses) = do
-  delineations <- getDelineations
-  signVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] signPeriods)
-  retrogradeVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] retrogradePeriods)
-  aspectVEvents <- traverse (makeAspectVEvent delineations) (fromMaybe [] aspectPeriods)
-  transitVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] transitPeriods)
-  eclipseVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] eclipses)
-  let events = signVEvents ++ retrogradeVEvents ++ aspectVEvents ++ transitVEvents ++ eclipseVEvents
-  return $
-    def
-      { vcEvents = Map.fromList (map (\e -> ((uidValue (veUID e), Nothing), e)) events)
-      }
-  where
-    englishList :: [TL.Text] -> Maybe TL.Text
-    englishList [] = Nothing
-    englishList [x] = Just x
-    englishList [x, y] = Just $ x <> " and " <> y
-    englishList xs = Just $ TL.intercalate ", " (init xs) <> ", and " <> last xs
-    timeString :: UTCTime -> TL.Text
-    timeString = TL.pack . formatTime defaultTimeLocale "%B %d, %Y %H:%M UTC"
-    makeAspectVEvent :: Delineations -> AspectEvent NatalAspect -> IO VEvent
-    makeAspectVEvent delineations e = do
-      exactTimes <- findExactTimes e
-      let delineation = eventSummary delineations e
-          description =
-            TL.unlines $
-              catMaybes
-                [ delineation,
-                  fmap ((<> ".") . ("Going exact on " <>)) (englishList (map timeString exactTimes)) <|> Just "Does not go exact."
-                ]
-      makeVEvent precision (Just description) e
-
-eventSummary :: Delineations -> AspectEvent k -> Maybe TL.Text
-eventSummary delineations e =
-  case e of
-    AspectEvent {aspect = Aspect {point1 = Planet p1, point2 = Planet p2, aspectType}} ->
-      Map.lookup (min p1 p2, max p1 p2, aspectType) delineations
-    _ -> Nothing
-
-makeVEvent :: (IsEvent e) => Precision -> Maybe TL.Text -> e -> IO VEvent
-makeVEvent precision description e = do
+eventVEvent :: Delineations -> AspectKind -> Almanac.Event -> IO VEvent
+eventVEvent delineations natalOrMundane event = do
   uuid <- TL.fromStrict . UUID.toText <$> UUID.nextRandom
+  let description = getDelineationFor delineations (natalOrMundane, event)
+      summary = getSummary (natalOrMundane, event)
   pure $
     VEvent
       { veDescription =
@@ -79,7 +39,7 @@ makeVEvent precision description e = do
         veSummary =
           Just
             ( Summary
-                { summaryValue = summary e,
+                { summaryValue = summary,
                   summaryOther = def,
                   summaryAltRep = def,
                   summaryLanguage = def
@@ -92,52 +52,61 @@ makeVEvent precision description e = do
             },
         veUID = UID {uidValue = uuid, uidOther = def},
         veDTStart =
-          Just $ case precision of
-            AstroCalendar.Types.Daily ->
-              DTStartDate
-                { dtStartDateValue = Date (utctDay (startTime e)),
-                  dtStartOther = def
-                }
-            _ ->
-              DTStartDateTime
-                { dtStartDateTimeValue = UTCDateTime (startTime e),
-                  dtStartOther = def
-                },
+          Just
+            DTStartDate
+              { dtStartDateValue = Date (startDate event),
+                dtStartOther = def
+              },
         veDTEndDuration =
-          Just $ Left $ case precision of
-            AstroCalendar.Types.Daily ->
+          Just $
+            Left
               DTEndDate
-                { dtEndDateValue = Date (addDays 1 (utctDay (endTime e))),
-                  dtEndOther = def
-                }
-            _ ->
-              DTEndDateTime
-                { dtEndDateTimeValue = UTCDateTime (endTime e),
+                { dtEndDateValue = Date (endDate event),
                   dtEndOther = def
                 },
         veTransp = Transparent {timeTransparencyOther = def},
-        veAlarms = def,
-        veAttach = def,
-        veAttendee = def,
-        veCategories = def,
         veClass = def,
-        veComment = def,
-        veContact = def,
         veCreated = def,
-        veExDate = def,
         veGeo = def,
         veLastMod = def,
         veLocation = def,
         veOrganizer = def,
-        veOther = def,
         vePriority = def,
-        veRDate = def,
-        veRRule = def,
-        veRStatus = def,
-        veRecurId = def,
-        veRelated = def,
-        veResources = def,
         veSeq = def,
         veStatus = def,
-        veUrl = def
+        veUrl = def,
+        veRecurId = def,
+        veRRule = def,
+        veAttach = def,
+        veAttendee = def,
+        veCategories = def,
+        veComment = def,
+        veContact = def,
+        veExDate = def,
+        veRStatus = def,
+        veRelated = def,
+        veResources = def,
+        veRDate = def,
+        veAlarms = def,
+        veOther = def
+      }
+  where
+    _englishList :: [TL.Text] -> Maybe TL.Text
+    _englishList [] = Nothing
+    _englishList [x] = Just x
+    _englishList [x, y] = Just $ x <> " and " <> y
+    _englishList xs = Just $ TL.intercalate ", " (init xs) <> ", and " <> last xs
+    _timeString :: UTCTime -> TL.Text
+    _timeString = TL.pack . formatTime defaultTimeLocale "%B %d, %Y %H:%M UTC"
+
+getSummary :: (AspectKind, Almanac.Event) -> TL.Text
+getSummary = TL.pack . eventString
+
+astrologicalCalendar :: AstrologicalEvents -> IO VCalendar
+astrologicalCalendar events = do
+  delineations <- getDelineations
+  vEvents <- mapM (uncurry $ eventVEvent delineations) events
+  return $
+    def
+      { vcEvents = Map.fromList (map (\e -> ((uidValue (veUID e), Nothing), e)) vEvents)
       }

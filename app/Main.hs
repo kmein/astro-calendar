@@ -15,6 +15,8 @@ import Data.Aeson qualified as JSON
 import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Default
 import Data.List (sort)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe
 import Data.Text.Lazy qualified as TL
 import Data.Time.Clock
@@ -159,13 +161,6 @@ sample =
                                       <> metavar "YYYY-MM-DD (HH:MM)"
                                   )
                               )
-                            <*> ( flag' Daily (long "daily" <> help "Check every day (default)")
-                                    <|> flag' Hourly (long "hourly" <> help "Check every hour")
-                                    <|> flag' Monthly (long "monthly" <> help "Check every month")
-                                    <|> flag' Minutely (long "minutely" <> help "Check every minute")
-                                    <|> flag' Yearly (long "yearly" <> help "Check every year")
-                                    <|> pure Daily
-                                )
                         )
                 )
                 (progDesc "Show astrological alignments over time")
@@ -193,22 +188,11 @@ parseGeographicPosition = eitherReader $ \input ->
           Right $ SwE.GeographicPosition lat lon
     _ -> Left "Invalid position format: Expected format: LAT,LON"
 
-parsePlanets :: ReadM [SwE.Planet]
-parsePlanets = eitherReader (mapM parsePlanet . TL.splitOn "," . TL.pack)
+parsePlanets :: ReadM (NonEmpty SwE.Planet)
+parsePlanets = eitherReader (fmap NonEmpty.fromList . mapM parsePlanet . TL.splitOn "," . TL.pack)
 
-parseAspectTypes :: ReadM [AspectType]
-parseAspectTypes = eitherReader (mapM parseAspectType . TL.splitOn "," . TL.pack)
-
-eventToString :: (IsEvent e) => EventsSettings -> e -> String
-eventToString settings event =
-  unwords
-    [ strptime (startTime event),
-      strptime (endTime event),
-      TL.unpack (summary event),
-      "TODO"
-    ]
-  where
-    strptime = formatTimeWithPrecision (settingsPrecision settings)
+parseAspectTypes :: ReadM (NonEmpty AspectType)
+parseAspectTypes = eitherReader (fmap NonEmpty.fromList . mapM parseAspectType . TL.splitOn "," . TL.pack)
 
 main :: IO ()
 main = do
@@ -269,28 +253,14 @@ main = do
             maybe (return ()) putStrLn delineations
         ICS -> error "ICS format is not supported for charts."
     Events eventsSettings -> do
-      events@(r, s, a, t, e) <- astrologicalEvents options eventsSettings
+      events <- astrologicalEvents options eventsSettings
       case settingsFormat settings of
         ICS -> do
-          calendar <- astrologicalCalendar (settingsPrecision eventsSettings) events
+          calendar <- astrologicalCalendar events
           BL.putStrLn $ printICalendar def calendar
-        Text ->
-          mapM_ putStrLn $
-            sort $
-              concat
-                [ maybe [] (map (eventToString eventsSettings)) r,
-                  maybe [] (map (eventToString eventsSettings)) s,
-                  maybe [] (map (eventToString eventsSettings)) a,
-                  maybe [] (map (eventToString eventsSettings)) t,
-                  maybe [] (map (eventToString eventsSettings)) e
-                ]
-        JSON -> do
+        JSON ->
           BL.putStrLn $
             JSON.encode $
-              JSON.object
-                [ "retrograde" JSON..= JSON.toJSON r,
-                  "sign" JSON..= JSON.toJSON s,
-                  "aspect" JSON..= JSON.toJSON a,
-                  "transits" JSON..= JSON.toJSON t,
-                  "eclipses" JSON..= JSON.toJSON e
-                ]
+              map eventJson events
+        Text -> mapM_ putStrLn $ sort $ map eventString events
+

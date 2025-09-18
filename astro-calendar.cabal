@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name:          astro-calendar
-version:       1.0.0
+version:       2.0.0
 license:       AGPL-3.0-or-later
 license-file:  LICENSE
 author:        Kierán Meinhardt
@@ -21,10 +21,8 @@ library astro-calendar-lib
     AstroCalendar.Chart
     AstroCalendar.Commonalities
     AstroCalendar.Delineation
-    AstroCalendar.Eclipse
     AstroCalendar.Ephemeris
     AstroCalendar.Event
-    AstroCalendar.ExactTime
     AstroCalendar.ICalendar
     AstroCalendar.Interpretation
     AstroCalendar.Types

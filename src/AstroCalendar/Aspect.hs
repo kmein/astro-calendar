@@ -1,24 +1,15 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module AstroCalendar.Aspect (findAspects, findTransits, distanceDegrees) where
+module AstroCalendar.Aspect (findAspects, findTransits) where
 
+import Almanac qualified
 import AstroCalendar.Angle
 import AstroCalendar.Types
 import Control.Monad
+import Data.Foldable (toList)
 import Data.Map qualified as Map
 import SwissEphemeris qualified as SwE
-
-distanceDegrees :: AspectType -> Angle
-distanceDegrees =
-  \case
-    Conjunction -> 0
-    Sextile -> 60
-    Square -> 90
-    Trine -> 120
-    Opposition -> 180
-    SemiSquare -> 45
-    Sesquiquadrate -> 135
 
 allowedOrb :: SelectionOptions -> Aspect -> Angle
 allowedOrb options aspectOrTransit =
@@ -40,7 +31,7 @@ allowedOrb options aspectOrTransit =
           | otherwise -> 0
         AstroDienst
           -- https://www.astro.com/astrology/in_aspect_e.htm
-          | aspectType aspectOrTransit == Sextile -> 5
+          | Almanac.aspectName (getAspectType (aspectType aspectOrTransit)) == Almanac.Sextile -> 5
           | let planets9 = map Planet [SwE.Sun, SwE.Moon, SwE.Jupiter, SwE.Saturn],
             p1 `elem` planets9 || p2 `elem` planets9 ->
               9
@@ -53,13 +44,19 @@ allowedOrb options aspectOrTransit =
           | otherwise -> 0
         LizGreene
           -- https://www.astro.com/astrology/in_aspect_e.htm
-          | aspectType aspectOrTransit `elem` [Conjunction, Opposition, Square, Trine] -> 10
+          | Almanac.aspectName (getAspectType (aspectType aspectOrTransit))
+              `elem` [ Almanac.Conjunction,
+                       Almanac.Opposition,
+                       Almanac.Square,
+                       Almanac.Trine
+                     ] ->
+              10
           | otherwise -> 6
         RichardTarnas ->
-          case aspectType aspectOrTransit of
-            Opposition -> 15
-            Conjunction -> 15
-            Square -> 10
+          case Almanac.aspectName (getAspectType (aspectType aspectOrTransit)) of
+            Almanac.Opposition -> 15
+            Almanac.Conjunction -> 15
+            Almanac.Square -> 10
             _ -> 10 -- ?
         ChrisBrennan
           -- https://theastrologypodcast.com/transcripts/ep-323-transcript-aspects-in-astrology-the-five-major-configurations/
@@ -75,13 +72,13 @@ findTransits options (Map.toList -> chartA) (Map.toList -> chartB) =
     (p1, x1) <- chartA
     (p2, x2) <- chartB
     when (chartA == chartB) $ guard $ p1 < p2
-    aspectType <- allAspectTypes options
+    aspectType <- toList $ allAspectTypes options
     guard $ case (p1, aspectType, p2) of -- only look at conjunctions between midpoints
-      -- (Midpoint _ _, Conjunction, Midpoint _ _) -> True
+    -- (Midpoint _ _, Conjunction, Midpoint _ _) -> True
       (Midpoint _ _, _, Midpoint _ _) -> False
       _ -> True
     let diff = abs $ Angle (SwE.getEclipticLongitude x1) `difference` Angle (SwE.getEclipticLongitude x2)
-        orb = abs $ diff - distanceDegrees aspectType
-        aspect = Aspect p1 aspectType p2
+        orb = abs $ diff - Angle (Almanac.angle aspectType)
+        aspect = Aspect p1 (AspectType aspectType) p2
     guard $ orb <= allowedOrb options aspect
     pure (aspect, orb)

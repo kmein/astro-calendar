@@ -3,6 +3,7 @@
 
 module AstroCalendar.Chart (chartJson, chartString, showLongitudeComponents) where
 
+import Almanac qualified
 import AstroCalendar.Angle
 import AstroCalendar.Types
 import Data.Aeson
@@ -51,7 +52,7 @@ aspectJson :: Aspect -> Angle -> Value
 aspectJson aspect orb =
   object
     [ "points" .= [point1 aspect, point2 aspect],
-      "type" .= aspectType aspect,
+      "type" .= aspectTypeToJson (Almanac.aspectName $ getAspectType $ aspectType aspect),
       "orb" .= orb
     ]
 
