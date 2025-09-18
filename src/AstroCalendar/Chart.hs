@@ -6,7 +6,7 @@ module AstroCalendar.Chart (chartJson, chartString, showLongitudeComponents) whe
 import AstroCalendar.Angle
 import AstroCalendar.Types
 import Data.Aeson
-import Data.List (intercalate, sortOn)
+import Data.List (foldl', intercalate, sortOn)
 import Data.Map qualified as Map
 import SwissEphemeris as SwE
 

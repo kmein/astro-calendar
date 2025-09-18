@@ -24,7 +24,6 @@
         "x86_64-linux"
         "aarch64-linux"
       ];
-      compiler = "ghc912";
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
       pkgsForSystem =
         system:
@@ -37,44 +36,48 @@
     in
     {
       overlays.default = final: prev: {
-        astro-calendar =
-          let
-            haskellPackages = prev.haskell.packages.${compiler};
+        haskellPackages = prev.haskellPackages.extend (
+          finalHaskell: prevHaskell: {
             swiss-ephemeris = prev.haskell.lib.doJailbreak (
-              haskellPackages.callCabal2nix "swiss-ephemeris" inputs.swiss-ephemeris { }
+              prevHaskell.callCabal2nix "swiss-ephemeris" inputs.swiss-ephemeris { }
             );
             almanac = prev.haskell.lib.doJailbreak (
-              haskellPackages.callCabal2nix "almanac" inputs.almanac {
-                swiss-ephemeris = swiss-ephemeris;
+              prevHaskell.callCabal2nix "almanac" inputs.almanac {
+                swiss-ephemeris = finalHaskell.swiss-ephemeris;
               }
             );
-            iCalendar = prev.haskell.lib.unmarkBroken (prev.haskell.lib.doJailbreak haskellPackages.iCalendar);
-          in
-          haskellPackages.callCabal2nix "astro-calendar" ./. {
-            inherit almanac swiss-ephemeris iCalendar;
-          };
+            iCalendar = prev.haskell.lib.unmarkBroken (prev.haskell.lib.doJailbreak prevHaskell.iCalendar);
+            astro-calendar = prevHaskell.callCabal2nix "astro-calendar" ./. {
+              inherit (finalHaskell) almanac swiss-ephemeris iCalendar;
+            };
+          }
+        );
       };
 
       packages = forAllSystems (system: {
-        default = (pkgsForSystem system).astro-calendar;
+        default = (pkgsForSystem system).haskellPackages.astro-calendar;
       });
 
       devShells = forAllSystems (
         system:
         let
           pkgs = pkgsForSystem system;
-          haskellPackages = pkgs.haskell.packages.${compiler};
         in
         {
-          default = haskellPackages.shellFor {
-            packages = ps: [ pkgs.astro-calendar ];
+          default = pkgs.haskellPackages.shellFor {
+            packages = ps: [
+              ps.astro-calendar
+              ps.almanac
+              ps.swiss-ephemeris
+            ];
             withHoogle = true;
             nativeBuildInputs = [
-              pkgs.ghcid
-              haskellPackages.hlint
-              haskellPackages.hoogle
-              haskellPackages.haskell-language-server
-              haskellPackages.cabal-install
+              pkgs.haskellPackages.ghcid
+              pkgs.haskellPackages.cabal-fmt
+              pkgs.haskellPackages.hlint
+              pkgs.haskellPackages.hoogle
+              pkgs.haskellPackages.haskell-language-server
+              pkgs.haskellPackages.cabal-install
               (pkgs.python3.withPackages (py: [
                 py.pandas
                 py.matplotlib
