@@ -68,15 +68,15 @@
           default = pkgs.haskellPackages.shellFor {
             packages = ps: [
               ps.astro-calendar
-              ps.almanac
-              ps.swiss-ephemeris
+              # if those are added here, they do not appear in the hoogle and haddock
+              # ps.almanac
+              # ps.swiss-ephemeris
             ];
             withHoogle = true;
             nativeBuildInputs = [
               pkgs.haskellPackages.ghcid
               pkgs.haskellPackages.cabal-fmt
               pkgs.haskellPackages.hlint
-              pkgs.haskellPackages.hoogle
               pkgs.haskellPackages.haskell-language-server
               pkgs.haskellPackages.cabal-install
               (pkgs.python3.withPackages (py: [
@@ -86,7 +86,7 @@
                 py.reportlab
               ]))
             ];
-            # exactDeps = true; #
+            exactDeps = true;
             shellHook = ''
               export SE_EPHE_PATH=${inputs.swisseph.outPath}/ephe
             '';
