@@ -243,12 +243,12 @@ eclipseString = \case
   Almanac.SolarEclipse solarEclipseType day -> unwords [show (dayFromJulianDay day), occultation, symbol Sun, show solarEclipseType]
   Almanac.LunarEclipse lunarEclipseType day -> unwords [show (dayFromJulianDay day), eclipse, symbol Moon, show lunarEclipseType]
 
-eventJson :: (AspectKind, Almanac.Event) -> Value
+eventJson :: (AspectKind, Almanac.Event, Maybe [UTCTime]) -> Value
 eventJson = \case
-  (natalOrMundane, Almanac.PlanetaryTransit transit) -> transitJson natalOrMundane transit
-  (_, Almanac.Eclipse eclipseInfo) -> eclipseJson eclipseInfo
-  (_, Almanac.ZodiacIngress crossing) -> crossingJson crossing
-  (_, Almanac.DirectionChange station) -> stationJson station
+  (natalOrMundane, Almanac.PlanetaryTransit transit, _) -> transitJson natalOrMundane transit
+  (_, Almanac.Eclipse eclipseInfo, _) -> eclipseJson eclipseInfo
+  (_, Almanac.ZodiacIngress crossing, _) -> crossingJson crossing
+  (_, Almanac.DirectionChange station, _) -> stationJson station
   _ -> "not implemented"
 
 stationJson :: Almanac.PlanetStation -> Value
@@ -482,6 +482,7 @@ data EventsSettings = EventsSettings
     withAspects :: Bool,
     withSigns :: Bool,
     withEclipses :: Bool,
+    exactTimes :: Bool,
     settingsBegin :: Maybe UTCTime,
     settingsEnd :: Maybe UTCTime,
     transitsTo :: Maybe UTCTime

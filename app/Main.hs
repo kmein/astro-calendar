@@ -134,6 +134,7 @@ sample =
                               ( long "eclipses"
                                   <> help "Include eclipses"
                               )
+                            <*> switch (long "exact" <> help "Calculate exact times")
                             <*> optional
                               ( option
                                   (parseUTCTime <|> parseDate)
@@ -262,5 +263,12 @@ main = do
           BL.putStrLn $
             JSON.encode $
               map eventJson events
-        Text -> mapM_ putStrLn $ sort $ map eventString events
-
+        Text ->
+          mapM_ putStrLn $
+            sort $
+              map
+                ( \(t, e, utcs) ->
+                    eventString (t, e)
+                      <> maybe "" (concatMap (formatTime defaultTimeLocale " | %Y-%m-%d %H:%M")) utcs
+                )
+                events
