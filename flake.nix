@@ -12,25 +12,19 @@
   };
 
   outputs =
-    inputs@{
-      self,
-      nixpkgs,
-      swisseph,
-      swiss-ephemeris,
-      almanac,
-    }:
+    inputs:
     let
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
       ];
-      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      forAllSystems = inputs.nixpkgs.lib.genAttrs supportedSystems;
       pkgsForSystem =
         system:
-        import nixpkgs {
+        import inputs.nixpkgs {
           inherit system;
           overlays = [
-            self.overlays.default
+            inputs.self.overlays.default
           ];
         };
     in
@@ -43,7 +37,7 @@
             );
             almanac = prev.haskell.lib.doJailbreak (
               prevHaskell.callCabal2nix "almanac" inputs.almanac {
-                swiss-ephemeris = finalHaskell.swiss-ephemeris;
+                inherit (finalHaskell) swiss-ephemeris;
               }
             );
             iCalendar = prev.haskell.lib.unmarkBroken (prev.haskell.lib.doJailbreak prevHaskell.iCalendar);
@@ -87,7 +81,7 @@
             ];
             # exactDeps = true; #
             shellHook = ''
-              export SE_EPHE_PATH=${swisseph.outPath}/ephe
+              export SE_EPHE_PATH=${inputs.swisseph.outPath}/ephe
             '';
           };
         }
