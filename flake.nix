@@ -1,5 +1,5 @@
 {
-  description = "Really simple URL shortener";
+  description = "Generate calendar files for astrological events";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";

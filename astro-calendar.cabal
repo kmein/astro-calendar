@@ -1,12 +1,12 @@
-cabal-version:   3.0
-name:            astro-calendar
-version:         1.0.0
-license:         AGPL-3.0-or-later
-license-file:    LICENSE
-author:          Kierán Meinhardt
-maintainer:      kmein@posteo.de
-category:        Astrology
-build-type:      Simple
+cabal-version: 3.0
+name:          astro-calendar
+version:       1.0.0
+license:       AGPL-3.0-or-later
+license-file:  LICENSE
+author:        Kierán Meinhardt
+maintainer:    kmein@posteo.de
+category:      Astrology
+build-type:    Simple
 
 common warnings
   ghc-options: -Wall
@@ -19,34 +19,34 @@ library astro-calendar-lib
     AstroCalendar.Angle
     AstroCalendar.Aspect
     AstroCalendar.Chart
+    AstroCalendar.Commonalities
+    AstroCalendar.Delineation
     AstroCalendar.Eclipse
     AstroCalendar.Ephemeris
     AstroCalendar.Event
+    AstroCalendar.ExactTime
     AstroCalendar.ICalendar
     AstroCalendar.Interpretation
     AstroCalendar.Types
-    AstroCalendar.Commonalities
-    AstroCalendar.Delineation
-    AstroCalendar.ExactTime
 
   build-depends:
-    , aeson                 >=2     && <3
-    , async                 >=2     && <3
-    , base                  >=4     && <5
-    , bytestring            >=0.11  && <1
-    , cassava               >=0.5   && <1
-    , containers            >=0.6   && <1
-    , vector                >=0.12  && <1
-    , data-default          >=0.7   && <1
-    , iCalendar             >=0.4   && <1
-    , http-client           >=0.7   && <1
-    , http-client-tls       >=0.3   && <1
-    , swiss-ephemeris       >=1.4   && <2
-    , parallel              >=3     && <4
-    , text                  >=2     && <3
-    , time                  >=1.12  && <2
-    , uuid                  >=1.3.0 && <2
-    , almanac               >=0.1   && <1
+    , aeson            >=2     && <3
+    , almanac          >=0.1   && <1
+    , async            >=2     && <3
+    , base             >=4     && <5
+    , bytestring       >=0.11  && <1
+    , cassava          >=0.5   && <1
+    , containers       >=0.6   && <1
+    , data-default     >=0.7   && <1
+    , http-client      >=0.7   && <1
+    , http-client-tls  >=0.3   && <1
+    , iCalendar        >=0.4   && <1
+    , parallel         >=3     && <4
+    , swiss-ephemeris  >=1.4   && <2
+    , text             >=2     && <3
+    , time             >=1.12  && <2
+    , uuid             >=1.3.0 && <2
+    , vector           >=0.12  && <1
 
   default-language:   Haskell2010
   default-extensions:
@@ -61,23 +61,22 @@ executable astro-calendar-cli
   ghc-options:        -O2 -threaded -Wall -with-rtsopts=-N -Werror
   main-is:            Main.hs
   build-depends:
+    , aeson                 >=2    && <3
     , astro-calendar-lib
-    , aeson                 >=2     && <3
-    , base                  >=4     && <5
-    , bytestring            >=0.11  && <1
-    , data-default          >=0.7   && <1
-    , iCalendar             >=0.4   && <1
-    , optparse-applicative  >=0.18  && <1
+    , base                  >=4    && <5
+    , bytestring            >=0.11 && <1
+    , data-default          >=0.7  && <1
+    , iCalendar             >=0.4  && <1
+    , optparse-applicative  >=0.18 && <1
     , safe
-    , swiss-ephemeris       >=1.4   && <2
-    , text                  >=2     && <3
-    , time                  >=1.12  && <2
+    , swiss-ephemeris       >=1.4  && <2
+    , text                  >=2    && <3
+    , time                  >=1.12 && <2
 
   default-language:   Haskell2010
   default-extensions:
     ImportQualifiedPost
     NamedFieldPuns
-
 
 test-suite astro-calendar-tests
   import:             warnings
@@ -86,16 +85,16 @@ test-suite astro-calendar-tests
   type:               exitcode-stdio-1.0
   main-is:            Tests.hs
   build-depends:
+    , aeson
     , astro-calendar-lib
     , base
+    , containers
+    , swiss-ephemeris
     , tasty
     , tasty-hunit
-    , aeson
-    , swiss-ephemeris
-    , containers
     , time
+
   default-language:   Haskell2010
   default-extensions:
     ImportQualifiedPost
     NamedFieldPuns
-
