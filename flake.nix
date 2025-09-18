@@ -29,24 +29,31 @@
         };
     in
     {
-      overlays.default = final: prev: {
-        haskellPackages = prev.haskellPackages.extend (
-          finalHaskell: prevHaskell: {
-            swiss-ephemeris = prev.haskell.lib.doJailbreak (
-              prevHaskell.callCabal2nix "swiss-ephemeris" inputs.swiss-ephemeris { }
-            );
-            almanac = prev.haskell.lib.doJailbreak (
-              prevHaskell.callCabal2nix "almanac" inputs.almanac {
-                inherit (finalHaskell) swiss-ephemeris;
-              }
-            );
-            iCalendar = prev.haskell.lib.unmarkBroken (prev.haskell.lib.doJailbreak prevHaskell.iCalendar);
-            astro-calendar = prevHaskell.callCabal2nix "astro-calendar" ./. {
-              inherit (finalHaskell) almanac swiss-ephemeris iCalendar;
-            };
-          }
-        );
-      };
+      overlays.default =
+        final: prev:
+        let
+          hsLib = prev.haskell.lib;
+        in
+        {
+          haskellPackages = prev.haskellPackages.extend (
+            finalHaskell: prevHaskell: {
+              swiss-ephemeris = hsLib.doJailbreak (
+                prevHaskell.callCabal2nix "swiss-ephemeris" inputs.swiss-ephemeris { }
+              );
+              almanac = hsLib.doJailbreak (
+                prevHaskell.callCabal2nix "almanac" inputs.almanac {
+                  inherit (finalHaskell) swiss-ephemeris;
+                }
+              );
+              iCalendar = hsLib.unmarkBroken (hsLib.doJailbreak prevHaskell.iCalendar);
+              astro-calendar = hsLib.doHaddock (
+                prevHaskell.callCabal2nix "astro-calendar" ./. {
+                  inherit (finalHaskell) almanac swiss-ephemeris iCalendar;
+                }
+              );
+            }
+          );
+        };
 
       packages = forAllSystems (system: {
         default = (pkgsForSystem system).haskellPackages.astro-calendar;
