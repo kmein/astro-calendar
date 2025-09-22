@@ -65,9 +65,10 @@ import Data.Maybe
 import Data.Text.Lazy (Text)
 import Data.Time.Calendar
 import Data.Time.Clock
+import Data.Time.LocalTime (ZonedTime, utc, utcToZonedTime)
 import Data.Time.Zones (TZ, timeZoneForUTCTime)
+import GHC.IO (unsafePerformIO)
 import SwissEphemeris (EclipticPosition, GeographicPosition (..), Planet (..), ZodiacSignName (..), dayFromJulianDay)
-import Data.Time.LocalTime (ZonedTime, utcToZonedTime, utc)
 
 data Point
   = Midpoint Point Point
@@ -508,7 +509,8 @@ data Settings = Settings
   }
 
 currentYear :: Year
-currentYear = 2025
+{-# NOINLINE currentYear #-}
+currentYear = unsafePerformIO $ fmap (\t -> let (y, _, _) = toGregorian (utctDay t) in y) getCurrentTime
 
 toConfiguredZonedTime :: SelectionOptions -> UTCTime -> ZonedTime
 toConfiguredZonedTime options utcTime =
