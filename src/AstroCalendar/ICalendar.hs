@@ -14,11 +14,12 @@ import Data.Text.Lazy qualified as TL
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.Format (defaultTimeLocale, formatTime)
+import Data.Time.LocalTime (ZonedTime)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUID
 import Text.ICalendar
 
-eventVEvent :: Delineations -> (AspectKind, Almanac.Event, Maybe [UTCTime]) -> IO VEvent
+eventVEvent :: Delineations -> (AspectKind, Almanac.Event, Maybe [ZonedTime]) -> IO VEvent
 eventVEvent delineations (natalOrMundane, event, exactitudeMoments) = do
   uuid <- TL.fromStrict . UUID.toText <$> UUID.nextRandom
   let description = TL.unlines $ catMaybes [delineation, exactTimes]
@@ -95,8 +96,8 @@ eventVEvent delineations (natalOrMundane, event, exactitudeMoments) = do
     englishList [x] = Just x
     englishList [x, y] = Just $ x <> " and " <> y
     englishList xs = Just $ TL.intercalate ", " (init xs) <> ", and " <> last xs
-    timeString :: UTCTime -> TL.Text
-    timeString = TL.pack . formatTime defaultTimeLocale "%B %d, %Y %H:%M UTC"
+    timeString :: ZonedTime -> TL.Text
+    timeString = TL.pack . formatTime defaultTimeLocale "%B %d, %Y %H:%M %Z"
 
 getSummary :: (AspectKind, Almanac.Event) -> TL.Text
 getSummary = TL.pack . eventString

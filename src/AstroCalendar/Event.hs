@@ -10,7 +10,7 @@ import Data.Foldable1 (toNonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time
 
-type AstrologicalEvents = [(AspectKind, Almanac.Event, Maybe [UTCTime])]
+type AstrologicalEvents = [(AspectKind, Almanac.Event, Maybe [ZonedTime])]
 
 getEvent :: Either Almanac.Event Almanac.ExactEvent -> Almanac.Event
 getEvent = either id Almanac.event
@@ -55,7 +55,7 @@ astrologicalEvents options settings = do
               ( \x ->
                   ( tag,
                     Almanac.event x,
-                    Just $ Almanac.exactitudeMoments x
+                    Just $ map (toConfiguredZonedTime options) $ Almanac.exactitudeMoments x
                   )
               )
               <$> Almanac.eventsWithExactitude xs
