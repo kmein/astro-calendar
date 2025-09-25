@@ -247,39 +247,43 @@ eclipseString = \case
   Almanac.SolarEclipse solarEclipseType day -> unwords [show (dayFromJulianDay day), occultation, symbol Sun, show solarEclipseType]
   Almanac.LunarEclipse lunarEclipseType day -> unwords [show (dayFromJulianDay day), eclipse, symbol Moon, show lunarEclipseType]
 
-eventJson :: (AspectKind, Almanac.Event, Maybe [UTCTime]) -> Value
-eventJson = \case
-  (natalOrMundane, Almanac.PlanetaryTransit transit, _) -> transitJson natalOrMundane transit
-  (_, Almanac.Eclipse eclipseInfo, _) -> eclipseJson eclipseInfo
-  (_, Almanac.ZodiacIngress crossing, _) -> crossingJson crossing
-  (_, Almanac.DirectionChange station, _) -> stationJson station
-  _ -> "not implemented"
+eventJson :: (AspectKind, Almanac.Event, Maybe [ZonedTime]) -> Value
+eventJson (natalOrMundane, event, exactitudeMoments) = case event of
+  Almanac.PlanetaryTransit transit -> transitJson natalOrMundane exactitudeMoments transit
+  Almanac.Eclipse eclipseInfo -> eclipseJson exactitudeMoments eclipseInfo
+  Almanac.ZodiacIngress crossing -> crossingJson exactitudeMoments crossing
+  Almanac.DirectionChange station -> stationJson exactitudeMoments station
+  _ -> "not implemented" -- TODO implement
+  -- TODO exactitude moments
 
-stationJson :: Almanac.PlanetStation -> Value
-stationJson (Almanac.PlanetStation {Almanac.stationStarts, Almanac.stationEnds, Almanac.stationPlanet, Almanac.stationType}) =
+stationJson :: Maybe [ZonedTime] -> Almanac.PlanetStation -> Value
+stationJson exactitudeMoments (Almanac.PlanetStation {Almanac.stationStarts, Almanac.stationEnds, Almanac.stationPlanet, Almanac.stationType}) =
   object
     [ "start" .= dayFromJulianDay stationStarts,
       "end" .= dayFromJulianDay stationEnds,
       "planet" .= planetToJson stationPlanet,
+      "exactTimes" .= fmap (map show) exactitudeMoments,
       "type" .= case stationType of
         Almanac.Retrograde -> String "retrograde"
         _ -> error "station type not implemented"
     ]
 
-crossingJson :: Almanac.Crossing Almanac.Zodiac -> Value
-crossingJson (Almanac.Crossing {Almanac.crossingStarts, Almanac.crossingEnds, Almanac.crossingPlanet, Almanac.crossingCrosses}) =
+crossingJson :: Maybe [ZonedTime] -> Almanac.Crossing Almanac.Zodiac -> Value
+crossingJson exactitudeMoments (Almanac.Crossing {Almanac.crossingStarts, Almanac.crossingEnds, Almanac.crossingPlanet, Almanac.crossingCrosses}) =
   object
     [ "start" .= dayFromJulianDay crossingStarts,
       "end" .= dayFromJulianDay crossingEnds,
+      "exactTimes" .= fmap (map show) exactitudeMoments,
       "planet" .= planetToJson crossingPlanet,
       "sign" .= zodiacSignToJson (Almanac.signName crossingCrosses),
       "type" .= String "sign"
     ]
 
-eclipseJson :: Almanac.EclipseInfo -> Value
-eclipseJson eclipseInfo =
+eclipseJson :: Maybe [ZonedTime] -> Almanac.EclipseInfo -> Value
+eclipseJson exactitudeMoments eclipseInfo =
   object
     [ "start" .= eclipseDate eclipseInfo,
+      "exactTimes" .= fmap (map show) exactitudeMoments,
       "planet"
         .= String
           ( case eclipseInfo of
@@ -289,11 +293,12 @@ eclipseJson eclipseInfo =
       "type" .= String "eclipse"
     ]
 
-transitJson :: AspectKind -> Almanac.Transit Planet -> Value
-transitJson natalOrMundane (Almanac.Transit {Almanac.transiting, Almanac.transited, Almanac.aspect, Almanac.transitStarts, Almanac.transitEnds}) =
+transitJson :: AspectKind -> Maybe [ZonedTime] -> Almanac.Transit Planet -> Value
+transitJson natalOrMundane exactitudeMoments (Almanac.Transit {Almanac.transiting, Almanac.transited, Almanac.aspect, Almanac.transitStarts, Almanac.transitEnds}) =
   object
     [ "start" .= dayFromJulianDay transitStarts,
       "end" .= dayFromJulianDay transitEnds,
+      "exactTimes" .= fmap (map show) exactitudeMoments,
       "aspect" .= aspectTypeToJson aspect,
       "planet" .= planetToJson transiting,
       "planet2" .= planetToJson transited,
