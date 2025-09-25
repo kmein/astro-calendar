@@ -11,6 +11,8 @@ import Data.Map qualified as Map
 import Data.Text.Lazy (Text)
 import Data.Vector qualified as V
 import SwissEphemeris (Planet (..))
+import System.Environment
+import Data.Maybe (fromMaybe)
 
 type Delineations = Map (Planet, Planet, AspectType) Text
 
@@ -27,7 +29,8 @@ getDelineationFor delineations = \case
 
 getDelineations :: IO Delineations
 getDelineations = do
-  csvData <- BL.readFile "delineations.csv"
+  delineationsPath <- fromMaybe "delineations.csv" <$> lookupEnv "DELINEATIONS_CSV"
+  csvData <- BL.readFile delineationsPath
   vec <- either fail return $ Csv.decode Csv.NoHeader csvData
   let mp = Map.fromList $ do
         (x, y, z, a) <- V.toList vec
