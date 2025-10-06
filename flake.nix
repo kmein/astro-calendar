@@ -37,8 +37,8 @@
         {
           haskellPackages = prev.haskellPackages.extend (
             finalHaskell: prevHaskell: {
-              swiss-ephemeris = hsLib.doJailbreak (
-                prevHaskell.callCabal2nix "swiss-ephemeris" inputs.swiss-ephemeris { }
+              swiss-ephemeris = hsLib.dontCheck (
+                hsLib.doJailbreak (prevHaskell.callCabal2nix "swiss-ephemeris" inputs.swiss-ephemeris { })
               );
               almanac = hsLib.doJailbreak (
                 prevHaskell.callCabal2nix "almanac" inputs.almanac {
