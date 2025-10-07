@@ -53,10 +53,16 @@
               );
             }
           );
+          swissEphemeris = prev.runCommand "ephemeris" {} ''
+            mkdir -p $out
+            cp -rf ${inputs.swisseph.outPath}/ephe/* $out
+            cp -rf ${inputs.almanac.outPath}/test/ephe/* $out
+          '';
         };
 
-      packages = forAllSystems (system: {
-        default = (pkgsForSystem system).haskellPackages.astro-calendar;
+      packages = forAllSystems (system: let pkgs = pkgsForSystem system; in {
+        default = pkgs.haskellPackages.astro-calendar;
+        swissEphemeris = pkgs.swissEphemeris;
       });
 
       devShells = forAllSystems (
@@ -88,7 +94,7 @@
             ];
             exactDeps = true;
             shellHook = ''
-              export SE_EPHE_PATH=${inputs.swisseph.outPath}/ephe
+              export SE_EPHE_PATH=${inputs.self.packages.${system}.swissEphemeris}
             '';
           };
         }
