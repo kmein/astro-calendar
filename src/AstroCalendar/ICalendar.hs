@@ -100,7 +100,7 @@ eventVEvent delineations (natalOrMundane, event, exactitudeMoments) = do
     timeString = TL.pack . formatTime defaultTimeLocale "%B %d, %Y %H:%M %Z"
 
 getSummary :: (AspectKind, Almanac.Event) -> TL.Text
-getSummary = TL.pack . eventString
+getSummary = TL.pack . eventString WithoutDate
 
 astrologicalCalendar :: AstrologicalEvents -> IO VCalendar
 astrologicalCalendar events = do

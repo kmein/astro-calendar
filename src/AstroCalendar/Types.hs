@@ -14,6 +14,7 @@ module AstroCalendar.Types
     Ephemeris,
     Aspect (..),
     TimeSeries,
+    EventStringSettings (..),
     aspectString,
     allAspects,
     allAspectTypes,
@@ -69,6 +70,8 @@ import Data.Time.LocalTime (ZonedTime, utc, utcToZonedTime)
 import Data.Time.Zones (TZ, timeZoneForUTCTime)
 import GHC.IO (unsafePerformIO)
 import SwissEphemeris (EclipticPosition, GeographicPosition (..), Planet (..), ZodiacSignName (..), dayFromJulianDay)
+
+data EventStringSettings = WithDate | WithoutDate
 
 data Point
   = Midpoint Point Point
@@ -206,28 +209,35 @@ aspectString aspect =
       symbol (point2 aspect)
     ]
 
-transitString :: (Symbol a) => AspectKind -> Almanac.Transit a -> String
-transitString natalOrMundane (Almanac.Transit {Almanac.transiting, Almanac.transited, Almanac.aspect, Almanac.transitStarts, Almanac.transitEnds}) =
+transitString :: (Symbol a) => EventStringSettings -> AspectKind -> Almanac.Transit a -> String
+transitString settings natalOrMundane (Almanac.Transit {Almanac.transiting, Almanac.transited, Almanac.aspect, Almanac.transitStarts, Almanac.transitEnds}) =
   let t0 = dayFromJulianDay transitStarts
       t1 = dayFromJulianDay transitEnds
-   in unwords
-        [ show t0,
-          show t1,
-          symbol transiting,
-          symbol aspect,
-          case natalOrMundane of
-            Natal -> "natal " <> symbol transited
-            Mundane -> symbol transited
-        ]
+   in unwords $
+        ( case settings of
+            WithDate -> [show t0, show t1]
+            WithoutDate -> []
+        )
+          ++ [ symbol transiting,
+               symbol aspect,
+               case natalOrMundane of
+                 Natal -> "natal " <> symbol transited
+                 Mundane -> symbol transited
+             ]
 
-crossingString :: (Symbol a) => Almanac.Crossing a -> String
-crossingString (Almanac.Crossing {Almanac.crossingStarts, Almanac.crossingEnds, Almanac.crossingPlanet, Almanac.crossingCrosses}) =
+crossingString :: (Symbol a) => EventStringSettings -> Almanac.Crossing a -> String
+crossingString settings (Almanac.Crossing {Almanac.crossingStarts, Almanac.crossingEnds, Almanac.crossingPlanet, Almanac.crossingCrosses}) =
   let t0 = dayFromJulianDay crossingStarts
       t1 = dayFromJulianDay crossingEnds
-   in unwords [show t0, show t1, symbol crossingPlanet, symbol crossingCrosses]
+   in unwords $
+        ( case settings of
+            WithDate -> [show t0, show t1]
+            WithoutDate -> []
+        )
+          ++ [symbol crossingPlanet, symbol crossingCrosses]
 
-stationString :: Almanac.PlanetStation -> String
-stationString (Almanac.PlanetStation {Almanac.stationStarts, Almanac.stationEnds, Almanac.stationPlanet, Almanac.stationType}) =
+stationString :: EventStringSettings -> Almanac.PlanetStation -> String
+stationString settings (Almanac.PlanetStation {Almanac.stationStarts, Almanac.stationEnds, Almanac.stationPlanet, Almanac.stationType}) =
   let t0 = dayFromJulianDay stationStarts
       t1 = dayFromJulianDay stationEnds
       stationTypeString = case stationType of
@@ -235,17 +245,28 @@ stationString (Almanac.PlanetStation {Almanac.stationStarts, Almanac.stationEnds
         Almanac.StationaryDirect -> "SD"
         Almanac.Retrograde -> "R"
         Almanac.Direct -> "D"
-   in unwords [show t0, show t1, symbol stationPlanet, stationTypeString]
+   in unwords $
+        ( case settings of
+            WithDate -> [show t0, show t1]
+            WithoutDate -> []
+        )
+          ++ [symbol stationPlanet, stationTypeString]
 
 eclipseDate :: Almanac.EclipseInfo -> Day
 eclipseDate = \case
   Almanac.SolarEclipse _ day -> dayFromJulianDay day
   Almanac.LunarEclipse _ day -> dayFromJulianDay day
 
-eclipseString :: Almanac.EclipseInfo -> String
-eclipseString = \case
-  Almanac.SolarEclipse solarEclipseType day -> unwords [show (dayFromJulianDay day), occultation, symbol Sun, show solarEclipseType]
-  Almanac.LunarEclipse lunarEclipseType day -> unwords [show (dayFromJulianDay day), eclipse, symbol Moon, show lunarEclipseType]
+eclipseString :: EventStringSettings -> Almanac.EclipseInfo -> String
+eclipseString settings = \case
+  Almanac.SolarEclipse solarEclipseType day ->
+    unwords $
+      datePart day ++ [occultation, symbol Sun, show solarEclipseType]
+  Almanac.LunarEclipse lunarEclipseType day -> unwords $ datePart day ++ [eclipse, symbol Moon, show lunarEclipseType]
+  where
+    datePart day = case settings of
+      WithDate -> [show (dayFromJulianDay day)]
+      WithoutDate -> []
 
 eventJson :: (AspectKind, Almanac.Event, Maybe [ZonedTime]) -> Value
 eventJson (natalOrMundane, event, exactitudeMoments) = case event of
@@ -326,12 +347,12 @@ endDate = \case
   Almanac.Eclipse e -> eclipseDate e
   s -> error $ "endDate not implemented for " ++ show s
 
-eventString :: (AspectKind, Almanac.Event) -> String
-eventString = \case
-  (natalOrMundane, Almanac.PlanetaryTransit transit) -> transitString natalOrMundane transit
-  (_, Almanac.Eclipse eclipseInfo) -> eclipseString eclipseInfo
-  (_, Almanac.ZodiacIngress crossing) -> crossingString crossing
-  (_, Almanac.DirectionChange station) -> stationString station
+eventString :: EventStringSettings -> (AspectKind, Almanac.Event) -> String
+eventString settings = \case
+  (natalOrMundane, Almanac.PlanetaryTransit transit) -> transitString settings natalOrMundane transit
+  (_, Almanac.Eclipse eclipseInfo) -> eclipseString settings eclipseInfo
+  (_, Almanac.ZodiacIngress crossing) -> crossingString settings crossing
+  (_, Almanac.DirectionChange station) -> stationString settings station
   _ -> "not implemented"
 
 aspectTypeFromName :: Almanac.AspectName -> AspectType

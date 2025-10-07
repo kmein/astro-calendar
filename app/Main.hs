@@ -278,7 +278,7 @@ main = do
             sort $
               map
                 ( \(t, e, utcs) ->
-                    eventString (t, e) <> case utcs of
+                    eventString WithDate (t, e) <> case utcs of
                       Just utcs'@(_ : _) -> " | Exact times: " ++ concatMap (formatTime defaultTimeLocale "%Y-%m-%d %H:%M %Z ") utcs'
                       Nothing -> ""
                       Just [] -> ""

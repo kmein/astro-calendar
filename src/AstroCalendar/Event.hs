@@ -71,7 +71,7 @@ astrologicalEvents options settings = do
                 )
            in Almanac.runQuery (natalQuery referenceEvent)
         _ -> pure mempty
-   in fmap (filter (predicate) . toList) $
+   in fmap (filter predicate . toList) $
         (<>)
           <$> (maybeExactify Mundane =<< getMundaneEvents)
           <*> (maybeExactify Natal =<< getNatalEvents)
