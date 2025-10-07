@@ -6,37 +6,43 @@ import Almanac qualified
 import AstroCalendar.Types (AspectKind (..), AspectType (..), aspectTypeFromName, parseAspectType, parsePlanet)
 import Data.ByteString.Lazy qualified as BL
 import Data.Csv qualified as Csv
-import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Text.Lazy (Text)
 import Data.Vector qualified as V
 import SwissEphemeris (Planet (..))
+import System.Directory (doesFileExist)
 import System.Environment
-import Data.Maybe (fromMaybe)
+import System.IO (hPutStrLn, stderr)
 
-type Delineations = Map (Planet, Planet, AspectType) Text
+type Delineations = (Planet, Planet, AspectType) -> Maybe Text
 
 getDelineationFor :: Delineations -> (AspectKind, Almanac.Event) -> Maybe Text
-getDelineationFor delineations = \case
+getDelineationFor delineate = \case
   (Mundane, Almanac.PlanetaryTransit (Almanac.Transit {Almanac.transiting, Almanac.transited, Almanac.aspect})) ->
-    Map.lookup
+    delineate
       ( min transiting transited,
         max transiting transited,
         aspectTypeFromName aspect
       )
-      delineations
   _ -> Nothing
 
 getDelineations :: IO Delineations
 getDelineations = do
   delineationsPath <- fromMaybe "delineations.csv" <$> lookupEnv "DELINEATIONS_CSV"
-  csvData <- BL.readFile delineationsPath
-  vec <- either fail return $ Csv.decode Csv.NoHeader csvData
-  let mp = Map.fromList $ do
-        (x, y, z, a) <- V.toList vec
-        case (,,) <$> parsePlanet x <*> parsePlanet y <*> parseAspectType z of
-          Right (p1, p2, aspectType) ->
-            let delineation = a :: Text
-             in return ((min p1 p2, max p1 p2, aspectType), delineation)
-          Left err -> error $ "Error parsing CSV: " ++ err
-  return mp
+  pathExists <- doesFileExist delineationsPath
+  if pathExists
+    then do
+      csvData <- BL.readFile delineationsPath
+      vec <- either fail return $ Csv.decode Csv.NoHeader csvData
+      let mp = Map.fromList $ do
+            (x, y, z, a) <- V.toList vec
+            case (,,) <$> parsePlanet x <*> parsePlanet y <*> parseAspectType z of
+              Right (p1, p2, aspectType) ->
+                let delineation = a :: Text
+                 in return ((min p1 p2, max p1 p2, aspectType), delineation)
+              Left err -> error $ "Error parsing CSV: " ++ err
+      return $ flip Map.lookup mp
+    else do
+      hPutStrLn stderr $ "Warning: Delineations file not found at " ++ delineationsPath ++ ", proceeding without delineations."
+      return $ const Nothing
