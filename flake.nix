@@ -94,7 +94,7 @@
             ];
             exactDeps = true;
             shellHook = ''
-              export SE_EPHE_PATH=${inputs.self.packages.${system}.swissEphemeris}
+              export EP4_PATH=${inputs.self.packages.${system}.swissEphemeris}
             '';
           };
         }
