@@ -17,8 +17,8 @@ import Data.UUID.V4 qualified as UUID
 import Text.ICalendar
 import Control.Applicative ((<|>))
 
-astrologicalCalendar :: Precision -> AstrologicalEvents -> IO VCalendar
-astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, transitPeriods, eclipses) = do
+astrologicalCalendar :: SelectionOptions -> Precision -> AstrologicalEvents -> IO VCalendar
+astrologicalCalendar options precision (retrogradePeriods, signPeriods, aspectPeriods, transitPeriods, eclipses) = do
   delineations <- getDelineations
   signVEvents <- traverse makeVEvent' (fromMaybe [] signPeriods)
   retrogradeVEvents <- traverse makeVEvent' (fromMaybe [] retrogradePeriods)
@@ -39,9 +39,7 @@ astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, t
     makeAspectVEvent :: Delineations -> AspectEvent NatalAspect -> IO VEvent
     makeAspectVEvent delineations e = do
       let exactTimes = [aspectExactTime e]
-          timeString :: UTCTime -> TL.Text
-          -- TODO zone the time correctly
-          timeString = TL.pack . formatTimeWithPrecision precision
+          timeString = TL.pack . formatTimeWithPrecision precision . toConfiguredZonedTime options
       let delineation = eventSummary delineations e
           description =
             TL.unlines $

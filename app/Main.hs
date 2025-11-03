@@ -136,7 +136,6 @@ sample =
                               ( long "eclipses"
                                   <> help "Include eclipses"
                               )
-                            <*> switch (long "exact" <> help "Calculate exact times")
                             <*> optional
                               ( option
                                   (parseUTCTime <|> parseDate)
@@ -210,15 +209,16 @@ parsePlanets = eitherReader (mapM parsePlanet . TL.splitOn "," . TL.pack)
 parseAspectTypes :: ReadM [AspectType]
 parseAspectTypes = eitherReader (mapM parseAspectType . TL.splitOn "," . TL.pack)
 
-eventToString :: (IsEvent e) => EventsSettings -> e -> String
-eventToString settings event =
+eventToString :: (IsEvent e) => SelectionOptions -> EventsSettings -> e -> String
+eventToString options settings event =
   unwords
-    [ strptime (startTime event),
-      strptime (endTime event),
+    [ strptime $ toConfiguredZonedTime options (startTime event),
+      strptime $ toConfiguredZonedTime options (endTime event),
       TL.unpack (summary event),
-      maybe "" strptime (maxTime event)
+      maybe "" (strptime . toConfiguredZonedTime options) (maxTime event)
     ]
   where
+    strptime :: (FormatTime a) => a -> String
     strptime = formatTimeWithPrecision (settingsPrecision settings)
 
 main :: IO ()
@@ -283,17 +283,18 @@ main = do
       events@(r, s, a, t, e) <- astrologicalEvents options eventsSettings
       case settingsFormat settings of
         ICS -> do
-          calendar <- astrologicalCalendar (settingsPrecision eventsSettings) events
+          calendar <- astrologicalCalendar options (settingsPrecision eventsSettings) events
           BL.putStrLn $ printICalendar def calendar
         Text ->
           mapM_ putStrLn $
             sort $
               concat
-                [ maybe [] (map (eventToString eventsSettings)) r,
-                  maybe [] (map (eventToString eventsSettings)) s,
-                  maybe [] (map (eventToString eventsSettings)) a,
-                  maybe [] (map (eventToString eventsSettings)) t,
-                  maybe [] (map (eventToString eventsSettings)) e
+                [ maybe [] (map (eventToString options eventsSettings)) r,
+
+                  maybe [] (map (eventToString options eventsSettings)) s,
+                  maybe [] (map (eventToString options eventsSettings)) a,
+                  maybe [] (map (eventToString options eventsSettings)) t,
+                  maybe [] (map (eventToString options eventsSettings)) e
                 ]
         JSON -> do
           BL.putStrLn $

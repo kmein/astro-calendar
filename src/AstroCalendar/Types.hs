@@ -421,8 +421,8 @@ data Precision = Yearly | Monthly | Daily | Hourly | Minutely
 
 formatTimeWithPrecision :: (FormatTime a) => Precision -> a -> String
 formatTimeWithPrecision precision = formatTime defaultTimeLocale $ case precision of
-  Minutely -> "%Y-%m-%d %H:%M"
-  Hourly -> "%Y-%m-%d %H"
+  Minutely -> "%Y-%m-%d %H:%M %Z"
+  Hourly -> "%Y-%m-%d %H %Z"
   Daily -> "%Y-%m-%d"
   Monthly -> "%Y-%m"
   Yearly -> "%Y"
@@ -457,7 +457,6 @@ data EventsSettings = EventsSettings
     withAspects :: Bool,
     withSigns :: Bool,
     withEclipses :: Bool,
-    exactTimes :: Bool,
     settingsBegin :: Maybe UTCTime,
     settingsEnd :: Maybe UTCTime,
     transitsTo :: Maybe UTCTime,
