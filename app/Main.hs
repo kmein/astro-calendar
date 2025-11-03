@@ -216,7 +216,7 @@ eventToString settings event =
     [ strptime (startTime event),
       strptime (endTime event),
       TL.unpack (summary event),
-      "TODO"
+      maybe "" strptime (maxTime event)
     ]
   where
     strptime = formatTimeWithPrecision (settingsPrecision settings)

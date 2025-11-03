@@ -49,7 +49,6 @@
           swissEphemeris = prev.runCommand "ephemeris" {} ''
             mkdir -p $out
             cp -rf ${inputs.swisseph.outPath}/ephe/* $out
-            cp -rf ${inputs.almanac.outPath}/test/ephe/* $out
           '';
         };
 
@@ -68,7 +67,6 @@
             packages = ps: [
               ps.astro-calendar
               # if those are added here, they do not appear in the hoogle and haddock
-              # ps.almanac
               # ps.swiss-ephemeris
             ];
             withHoogle = true;

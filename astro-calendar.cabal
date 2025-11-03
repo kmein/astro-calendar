@@ -24,7 +24,6 @@ library astro-calendar-lib
     AstroCalendar.Eclipse
     AstroCalendar.Ephemeris
     AstroCalendar.Event
-    AstroCalendar.ExactTime
     AstroCalendar.ICalendar
     AstroCalendar.Interpretation
     AstroCalendar.Types
@@ -80,23 +79,22 @@ executable astro-calendar-cli
     ImportQualifiedPost
     NamedFieldPuns
 
--- test-suite astro-calendar-tests
---   import:             warnings
---   hs-source-dirs:     test
---   ghc-options:        -O2 -threaded -with-rtsopts=-N -Werror
---   type:               exitcode-stdio-1.0
---   main-is:            Tests.hs
---   build-depends:
---     , aeson
---     , astro-calendar-lib
---     , base
---     , containers
---     , swiss-ephemeris
---     , tasty
---     , tasty-hunit
---     , time
---
---   default-language:   Haskell2010
---   default-extensions:
---     ImportQualifiedPost
---     NamedFieldPuns
+test-suite astro-calendar-tests
+  import:             warnings
+  hs-source-dirs:     test
+  ghc-options:        -O2 -threaded -Wall -with-rtsopts=-N -Werror
+  type:               exitcode-stdio-1.0
+  main-is:            Tests.hs
+  build-depends:
+    , astro-calendar-lib
+    , base
+    , tasty
+    , tasty-hunit
+    , aeson
+    , swiss-ephemeris
+    , containers
+    , time
+  default-language:   Haskell2010
+  default-extensions:
+    ImportQualifiedPost
+    NamedFieldPuns

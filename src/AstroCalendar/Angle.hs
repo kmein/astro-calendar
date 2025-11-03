@@ -18,7 +18,7 @@ normalize angle =
 difference :: Angle -> Angle -> Angle
 difference angle1 angle2 =
   let diff = normalize (angle1 - angle2)
-   in if diff > 180 then diff - 360 else if diff < -180 then diff + 360 else diff
+   in if diff > 180 then diff - 360 else diff
 
 degreesMinutes :: Angle -> (Int, Int)
 degreesMinutes (degrees -> a) = (truncate a, round $ (a - fromInteger (truncate a)) * 60)

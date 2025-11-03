@@ -8,7 +8,10 @@ import AstroCalendar.Aspect
 import AstroCalendar.Eclipse
 import AstroCalendar.Ephemeris (fullEphemeris, natalChart, parallelEphemeris)
 import AstroCalendar.Types
+import Data.Time.Clock
 import Control.Parallel (par)
+import Data.Function (on)
+import Data.List (minimumBy)
 import Data.Map qualified as Map
 import Data.Maybe
 import Data.Set qualified as Set
@@ -33,6 +36,9 @@ signEvent planet =
     signFromPosition :: SwE.EclipticPosition -> Maybe SwE.ZodiacSignName
     signFromPosition = SwE.longitudeZodiacSign . SwE.splitDegreesZodiac . SwE.getEclipticLongitude
 
+closestTime :: TimeSeries (Map.Map Aspect Angle) -> UTCTime
+closestTime = getTime . minimumBy (compare `on` getValue) . Map.toList
+
 aspectEvents :: TimeSeries (Map.Map Aspect Angle) -> [AspectEvent NatalAspect]
 aspectEvents aspects =
   concatMap findOccurrences $ Set.toList $ Set.fromList $ concatMap Map.keys $ Map.elems aspects
@@ -49,7 +55,8 @@ aspectEvents aspects =
                 AspectEvent
                   { aspect = aspect,
                     aspectStartTime = minimum times,
-                    aspectEndTime = maximum times
+                    aspectEndTime = maximum times,
+                    aspectExactTime = closestTime aspectTimes
                   }
           | otherwise = Nothing
 
@@ -69,7 +76,8 @@ transitEvents transits =
                 AspectEvent
                   { aspect = transit,
                     aspectStartTime = minimum times,
-                    aspectEndTime = maximum times
+                    aspectEndTime = maximum times,
+                    aspectExactTime = closestTime transitTimes
                   }
           | otherwise = Nothing
 

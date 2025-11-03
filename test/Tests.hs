@@ -6,15 +6,14 @@ import AstroCalendar.Ephemeris
 import AstroCalendar.Types
 import Data.Aeson
 import Data.Maybe (fromJust)
-import Data.Time (UTCTime(..))
+import Data.Time (UTCTime (..))
 import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import SwissEphemeris (GeographicPosition (..))
 import Test.Tasty
 import Test.Tasty.HUnit
 
 main :: IO ()
-main = do
-  defaultMain tests
+main = defaultMain tests
 
 parseISO8601 :: String -> Maybe UTCTime
 parseISO8601 isoString =

@@ -266,6 +266,7 @@ class IsEvent e where
   startTime :: e -> UTCTime
   endTime :: e -> UTCTime
   summary :: e -> Text
+  maxTime :: e -> Maybe UTCTime
 
 data SignEvent = SignEvent
   { planet :: Point,
@@ -278,6 +279,7 @@ instance IsEvent SignEvent where
   startTime = signStartTime
   endTime = signEndTime
   summary e = pack $ unwords [symbol (planet e), maybe "?" symbol (sign e)]
+  maxTime _ = Nothing
 
 planetToJson :: Planet -> Value
 planetToJson = \case
@@ -320,6 +322,7 @@ instance ToJSON SignEvent where
 
 data AspectEvent (k :: AspectKind) = AspectEvent
   { aspect :: Aspect,
+    aspectExactTime :: UTCTime,
     aspectStartTime :: UTCTime,
     aspectEndTime :: UTCTime
   }
@@ -328,11 +331,13 @@ instance IsEvent (AspectEvent NatalAspect) where
   startTime = aspectStartTime
   endTime = aspectEndTime
   summary (aspect -> a) = pack $ unwords [symbol (point1 a), symbol (aspectType a), symbol (point2 a)]
+  maxTime = Just . aspectExactTime
 
 instance IsEvent (AspectEvent TransitAspect) where
   startTime = aspectStartTime
   endTime = aspectEndTime
   summary (aspect -> a) = pack (unwords [symbol (point2 a), symbol (aspectType a)]) <> " natal " <> pack (symbol (point1 a))
+  maxTime = Just . aspectExactTime
 
 instance ToJSON (AspectEvent NatalAspect) where
   toJSON event =
@@ -340,6 +345,7 @@ instance ToJSON (AspectEvent NatalAspect) where
      in object
           [ "startTime" .= startTime event,
             "endTime" .= endTime event,
+            "exactTime" .= aspectExactTime event,
             "points" .= [point1 a, point2 a],
             "type" .= aspectType a
           ]
@@ -350,6 +356,7 @@ instance ToJSON (AspectEvent TransitAspect) where
      in object
           [ "startTime" .= startTime event,
             "endTime" .= endTime event,
+            "exactTime" .= aspectExactTime event,
             "natalPoint" .= point1 a,
             "transitingPoint" .= point2 a,
             "type" .= aspectType a
@@ -369,6 +376,10 @@ instance IsEvent EclipseEvent where
   summary = \case
     SolarEclipse e -> pack $ unwords [occultation, symbol Sun, show (solarEclipseType e)]
     LunarEclipse e -> pack $ unwords [eclipse, symbol Moon, show (lunarEclipseType e)]
+  maxTime =
+    Just . unsafeJulianToUTC . \case
+      LunarEclipse e -> lunarEclipseMax e
+      SolarEclipse e -> solarEclipseMax e
 
 unsafeJulianToUTC :: JulianDayUT1 -> UTCTime
 unsafeJulianToUTC = unsafePerformIO . fromJulianDay
@@ -401,6 +412,7 @@ instance IsEvent RetrogradeEvent where
   startTime = retrogradeStartTime
   endTime = retrogradeEndTime
   summary e = pack $ unwords [symbol (retrogradePlanet e), retrograde]
+  maxTime _ = Nothing
 
 data Format = ICS | Text | JSON
 

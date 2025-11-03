@@ -5,28 +5,26 @@ module AstroCalendar.ICalendar where
 
 import AstroCalendar.Delineation (Delineations, getDelineations)
 import AstroCalendar.Event
-import AstroCalendar.ExactTime (findExactTimes)
 import AstroCalendar.Types
-import Control.Applicative ((<|>))
 import Data.Default
 import Data.Map qualified as Map
 import Data.Maybe
 import Data.Text.Lazy qualified as TL
 import Data.Time.Calendar
 import Data.Time.Clock
-import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUID
 import Text.ICalendar
+import Control.Applicative ((<|>))
 
 astrologicalCalendar :: Precision -> AstrologicalEvents -> IO VCalendar
 astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, transitPeriods, eclipses) = do
   delineations <- getDelineations
-  signVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] signPeriods)
-  retrogradeVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] retrogradePeriods)
+  signVEvents <- traverse makeVEvent' (fromMaybe [] signPeriods)
+  retrogradeVEvents <- traverse makeVEvent' (fromMaybe [] retrogradePeriods)
   aspectVEvents <- traverse (makeAspectVEvent delineations) (fromMaybe [] aspectPeriods)
-  transitVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] transitPeriods)
-  eclipseVEvents <- traverse (makeVEvent precision Nothing) (fromMaybe [] eclipses)
+  transitVEvents <- traverse makeVEvent' (fromMaybe [] transitPeriods)
+  eclipseVEvents <- traverse makeVEvent' (fromMaybe [] eclipses)
   let events = signVEvents ++ retrogradeVEvents ++ aspectVEvents ++ transitVEvents ++ eclipseVEvents
   return $
     def
@@ -38,20 +36,22 @@ astrologicalCalendar precision (retrogradePeriods, signPeriods, aspectPeriods, t
     englishList [x] = Just x
     englishList [x, y] = Just $ x <> " and " <> y
     englishList xs = Just $ TL.intercalate ", " (init xs) <> ", and " <> last xs
-    timeString :: UTCTime -> TL.Text
-    -- TODO zone the time correctly
-    timeString = TL.pack . formatTime defaultTimeLocale "%B %d, %Y %H:%M UTC"
     makeAspectVEvent :: Delineations -> AspectEvent NatalAspect -> IO VEvent
     makeAspectVEvent delineations e = do
-      exactTimes <- findExactTimes e
+      let exactTimes = [aspectExactTime e]
+          timeString :: UTCTime -> TL.Text
+          -- TODO zone the time correctly
+          timeString = TL.pack . formatTimeWithPrecision precision
       let delineation = eventSummary delineations e
           description =
             TL.unlines $
               catMaybes
                 [ delineation,
-                  fmap ((<> ".") . ("Going exact on " <>)) (englishList (map timeString exactTimes)) <|> Just "Does not go exact."
+                  fmap ((<> ".") . ("Most intense around " <>)) (englishList (map timeString exactTimes)) <|> Just "Does not go exact."
                 ]
-      makeVEvent precision (Just description) e
+      makeVEvent (Just description) e
+    makeVEvent' :: (IsEvent e) => e -> IO VEvent
+    makeVEvent' = makeVEvent Nothing
 
 eventSummary :: Delineations -> AspectEvent k -> Maybe TL.Text
 eventSummary delineations e =
@@ -60,20 +60,21 @@ eventSummary delineations e =
       delineations (min p1 p2, max p1 p2, aspectType)
     _ -> Nothing
 
-makeVEvent :: (IsEvent e) => Precision -> Maybe TL.Text -> e -> IO VEvent
-makeVEvent precision description e = do
+makeVEvent :: (IsEvent e) => Maybe TL.Text -> e -> IO VEvent
+makeVEvent description e = do
   uuid <- TL.fromStrict . UUID.toText <$> UUID.nextRandom
   pure $
     VEvent
       { veDescription =
           fmap
             ( \d ->
-                Description
-                  { descriptionValue = d,
-                    descriptionAltRep = def,
-                    descriptionLanguage = def,
-                    descriptionOther = def
-                  }
+                ( Description
+                    { descriptionValue = d,
+                      descriptionAltRep = def,
+                      descriptionLanguage = def,
+                      descriptionOther = def
+                    }
+                )
             )
             description,
         veSummary =
@@ -92,29 +93,19 @@ makeVEvent precision description e = do
             },
         veUID = UID {uidValue = uuid, uidOther = def},
         veDTStart =
-          Just $ case precision of
-            AstroCalendar.Types.Daily ->
-              DTStartDate
-                { dtStartDateValue = Date (utctDay (startTime e)),
-                  dtStartOther = def
-                }
-            _ ->
-              DTStartDateTime
-                { dtStartDateTimeValue = UTCDateTime (startTime e),
-                  dtStartOther = def
-                },
+          Just
+            DTStartDateTime
+              { dtStartDateTimeValue = UTCDateTime (startTime e),
+                dtStartOther = def
+              },
         veDTEndDuration =
-          Just $ Left $ case precision of
-            AstroCalendar.Types.Daily ->
-              DTEndDate
-                { dtEndDateValue = Date (addDays 1 (utctDay (endTime e))),
-                  dtEndOther = def
-                }
-            _ ->
-              DTEndDateTime
-                { dtEndDateTimeValue = UTCDateTime (endTime e),
-                  dtEndOther = def
-                },
+          Just
+            ( Left
+                DTEndDateTime
+                  { dtEndDateTimeValue = UTCDateTime (endTime e),
+                    dtEndOther = def
+                  }
+            ),
         veTransp = Transparent {timeTransparencyOther = def},
         veAlarms = def,
         veAttach = def,
